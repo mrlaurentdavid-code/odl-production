@@ -1,0 +1,7 @@
+provider_id,fee_type,value,description,is_active
+pesa,admin_base,80.00,"Frais administratifs de base par envoi (Formalités 70 + E.dec 10)",true
+pesa,position_supp,8.00,"Coût par position douanière supplémentaire (dès la 3ème)",true
+pesa,gestion_droits_taux,0.035,"Taux de gestion sur les droits de douane (3.5%)",true
+pesa,gestion_droits_min,5.00,"Minimum de perception pour la gestion des droits de douane (CHF)",true
+pesa,gestion_tva_taux,0.025,"Taux de gestion sur la TVA d'import (2.5%)",true
+pesa,gestion_tva_min,5.00,"Minimum de perception pour la gestion de la TVA (CHF)",true

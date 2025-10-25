@@ -1,0 +1,36 @@
+{
+  "name": "tar-calculator-api",
+  "version": "1.0.0",
+  "description": "API de calcul de TAR (Taxe Anticipée de Recyclage) pour la Suisse",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "tar",
+    "recyclage",
+    "suisse",
+    "swico",
+    "sens",
+    "innobat"
+  ],
+  "author": "odeal.ch",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@supabase/supabase-js": "^2.75.0",
+    "body-parser": "^1.20.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "serpapi": "^2.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

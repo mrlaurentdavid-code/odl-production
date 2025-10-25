@@ -1,0 +1,212 @@
+{
+  "source": "SENS eRecycling 2026",
+  "dateValidite": "2026-01-01",
+  "tva": 8.1,
+  "categories": {
+    "100_SENS_General": {
+      "code": "100xxx",
+      "nom": "Équipements SENS généraux",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.19, "code": "100090"},
+        {"poidsMin": 0.250, "poidsMax": 5, "tarifHT": 0.68, "code": "100100"},
+        {"poidsMin": 5, "poidsMax": 15, "tarifHT": 3.11, "code": "100110"},
+        {"poidsMin": 15, "poidsMax": 25, "tarifHT": 7.51, "code": "100120"},
+        {"poidsMin": 25, "poidsMax": 70, "tarifHT": 10.00, "code": "100200"},
+        {"poidsMin": 70, "poidsMax": 250, "tarifHT": 18.52, "code": "100210"}
+      ],
+      "exemples": [
+        "Alarms et équipements de sécurité",
+        "Équipements ménagers et de cuisine",
+        "Articles pour animaux",
+        "Technologie du bâtiment",
+        "Équipements de levage et pompage",
+        "Équipements de jardin",
+        "Équipements de nettoyage",
+        "Barbecues électriques",
+        "Machines à café",
+        "Petits appareils divers",
+        "Équipements de cuisson",
+        "Appareils médicaux",
+        "Soins corporels",
+        "Sports et loisirs",
+        "Aspirateurs",
+        "Lave-linge et sèche-linge",
+        "Sex toys"
+      ]
+    },
+    "200_Refrigeration": {
+      "code": "100xxx",
+      "nom": "Réfrigération, climatisation et traitement d'air",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 25, "tarifHT": 9.26, "code": "100300"},
+        {"poidsMin": 25, "poidsMax": 100, "tarifHT": 26.00, "code": "100310"},
+        {"poidsMin": 100, "poidsMax": 250, "tarifHT": 46.30, "code": "100320"},
+        {"poidsMin": 250, "poidsMax": 999999, "tarifHT": 55.56, "code": "100330"}
+      ],
+      "exemples": [
+        "Distributeurs automatiques de glaçons",
+        "Congélateurs",
+        "Distributeurs de boissons réfrigérées",
+        "Appareils de réfrigération commerciaux",
+        "Climatiseurs",
+        "Réfrigérateurs à vin",
+        "Déshumidificateurs",
+        "Sèche-linge avec pompe à chaleur"
+      ],
+      "note": "Dimensions max: hauteur + largeur + profondeur ≤ 420 cm"
+    },
+    "300_Lighting": {
+      "code": "700xxx",
+      "nom": "Éclairage et lampes",
+      "tarifs": {
+        "luminaire": {"tarifHT": 0.18, "code": "700180", "description": "Luminaires avec connexion électrique"},
+        "ampoule": {"tarifHT": 0.16, "code": "700200", "description": "Ampoules et sources lumineuses remplaçables"},
+        "lampesBatterie": {
+          "code": "700xxx",
+          "tranches": [
+            {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.25, "code": "700500"},
+            {"poidsMin": 0.250, "poidsMax": 2, "tarifHT": 0.70, "code": "700501"},
+            {"poidsMin": 2, "poidsMax": 5, "tarifHT": 0.75, "code": "700502"},
+            {"poidsMin": 5, "poidsMax": 999999, "tarifHT": 2.63, "code": "700503"}
+          ]
+        }
+      },
+      "exemples": [
+        "Luminaires suspendus, plafonniers",
+        "Lampes LED",
+        "Lampes fluorescentes",
+        "Lampes à décharge",
+        "Guirlandes lumineuses",
+        "Lampes de poche",
+        "Lampes solaires avec batterie"
+      ]
+    },
+    "400_PowerTools": {
+      "code": "310xxx",
+      "nom": "Outils électriques et robots avec batterie",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.49, "code": "310090"},
+        {"poidsMin": 0.250, "poidsMax": 2, "tarifHT": 1.58, "code": "310095"},
+        {"poidsMin": 2, "poidsMax": 5, "tarifHT": 2.28, "code": "310100"},
+        {"poidsMin": 5, "poidsMax": 15, "tarifHT": 6.31, "code": "310120"},
+        {"poidsMin": 15, "poidsMax": 999999, "tarifHT": 12.33, "code": "310130"}
+      ],
+      "exemples": [
+        "Perceuses sans fil",
+        "Visseuses",
+        "Scies",
+        "Ponceuses",
+        "Tondeuses à gazon",
+        "Robots aspirateurs",
+        "Robots tondeuses"
+      ],
+      "note": "Poids incluant la batterie"
+    },
+    "500_Torches": {
+      "code": "320xxx",
+      "nom": "Lampes de poche et frontales",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.20, "code": "320090"},
+        {"poidsMin": 0.250, "poidsMax": 999999, "tarifHT": 0.40, "code": "320100"}
+      ],
+      "note": "Poids sans les batteries"
+    },
+    "600_Photovoltaic": {
+      "code": "600110",
+      "nom": "Modules photovoltaïques",
+      "tarifParKg": 0.04,
+      "exemples": [
+        "Panneaux solaires",
+        "Onduleurs",
+        "Systèmes de contrôle"
+      ],
+      "note": "Tarif par kilogramme"
+    },
+    "700_HeatPumps": {
+      "code": "150xxx",
+      "nom": "Pompes à chaleur",
+      "tranches": [
+        {"capaciteMin": 0, "capaciteMax": 20, "tarifHT": 38.00, "code": "150300", "unite": "kW"},
+        {"capaciteMin": 20, "capaciteMax": 50, "tarifHT": 85.00, "code": "150310", "unite": "kW"},
+        {"capaciteMin": 50, "capaciteMax": 350, "tarifHT": 105.00, "code": "150320", "unite": "kW"}
+      ],
+      "note": "Capacité de chauffage en kW"
+    },
+    "800_ECigarettes": {
+      "code": "110xxx",
+      "nom": "Cigarettes électroniques",
+      "tarifs": [
+        {"type": "Jetable", "tarifHT": 0.10, "code": "110100d"},
+        {"type": "Réutilisable avec batterie intégrée", "tarifHT": 0.10, "code": "110105d"},
+        {"type": "Porte-batterie avec batterie intégrée", "tarifHT": 0.10, "code": "110110d"},
+        {"type": "Porte-batterie sans batterie", "tarifHT": 0.05, "code": "110115d"}
+      ]
+    },
+    "900_ReplacementBatteries": {
+      "code": "390xxx",
+      "nom": "Batteries de remplacement pour outils électriques",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.25, "code": "390090"},
+        {"poidsMin": 0.250, "poidsMax": 0.750, "tarifHT": 0.80, "code": "390100"},
+        {"poidsMin": 0.750, "poidsMax": 5, "tarifHT": 1.60, "code": "390110"},
+        {"poidsMin": 5, "poidsMax": 15, "tarifHT": 9.60, "code": "390120"}
+      ],
+      "exemples": [
+        "Batteries de remplacement pour perceuses",
+        "Batteries pour tondeuses",
+        "Batteries pour robots"
+      ],
+      "note": "Uniquement pour batteries vendues séparément des outils"
+    },
+    "1000_ToysGames": {
+      "code": "400xxx",
+      "nom": "Jouets et jeux électroniques",
+      "baseTarification": "Prix de stockage entrepôt",
+      "tranches": [
+        {"prixMin": 0, "prixMax": 19.99, "tarifHT": 0.00, "code": "400110", "description": "Limite d'exemption"},
+        {"prixMin": 20.00, "prixMax": 59.99, "tarifHT": 0.46, "code": "400120", "description": "Prix moyen"},
+        {"prixMin": 60.00, "prixMax": 999999, "tarifHT": 0.46, "code": "400130", "description": "Prix élevé"}
+      ],
+      "tarifsSpeciaux": [
+        {"type": "Orgues et véhicules ≥ CHF 200", "tarifHT": 0.46, "code": "400150"},
+        {"type": "Consoles de jeux vidéo (hardware uniquement)", "tarifHT": 0.46, "code": "400160"}
+      ],
+      "exemples": [
+        "Jouets électroniques",
+        "Jeux vidéo (consoles)",
+        "Véhicules électriques jouets",
+        "Orgues électroniques"
+      ],
+      "note": "Prix de stockage = prix d'achat ajusté + transport + douane + assurance"
+    },
+    "1100_ProfessionalMedical": {
+      "code": "150xxxd",
+      "nom": "Équipements professionnels cosmétiques-médicaux B2B",
+      "tranches": [
+        {"poidsMin": 0, "poidsMax": 0.250, "tarifHT": 0.185, "code": "150090d"},
+        {"poidsMin": 0.250, "poidsMax": 5, "tarifHT": 0.56, "code": "150100d"},
+        {"poidsMin": 5, "poidsMax": 15, "tarifHT": 2.31, "code": "150110d"},
+        {"poidsMin": 15, "poidsMax": 25, "tarifHT": 5.56, "code": "150120d"},
+        {"poidsMin": 25, "poidsMax": 70, "tarifHT": 10.00, "code": "150200d"},
+        {"poidsMin": 70, "poidsMax": 250, "tarifHT": 18.52, "code": "150210d"}
+      ],
+      "exemples": [
+        "Équipements de diagnostic de la peau",
+        "Équipements d'analyse de la peau",
+        "Lasers pour épilation",
+        "Équipements de laboratoire",
+        "Échographes"
+      ],
+      "note": "Non contaminé - Usage professionnel B2B uniquement"
+    }
+  },
+  "motsClefs": {
+    "electromenager": ["bouilloire", "cafetière", "grille-pain", "mixeur", "blender", "robot", "cuiseur", "friteuse", "micro-ondes", "four"],
+    "refrigeration": ["frigo", "réfrigérateur", "congélateur", "climatiseur", "refroidisseur"],
+    "nettoyage": ["aspirateur", "nettoyeur", "balai"],
+    "jardin": ["tondeuse", "taille-haie", "souffleur"],
+    "eclairage": ["lampe", "lumière", "éclairage", "led", "ampoule", "lustre"],
+    "jouets": ["jouet", "console", "jeu", "véhicule jouet", "orgue électronique"],
+    "medical": ["diagnostic", "laser", "échographe", "laboratoire", "cosmétique professionnel"]
+  }
+}

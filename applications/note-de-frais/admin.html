@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O!deal - Administration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul><li><strong style="font-size: 1.2rem;">Administration</strong></li></ul>
+            <ul id="nav-links">
+                <li><a href="index.html">Accueil</a></li>
+                <li id="logout-li"><a href="#" id="logout-button">Déconnexion</a></li>
+            </ul>
+        </nav>
+        <article>
+            <h2>Gérer les Catégories</h2>
+            <form id="category-form" class="grid">
+                <label>Nom de la catégorie<input type="text" id="category-name" required></label>
+                <button type="submit">Ajouter la catégorie</button>
+            </form>
+            <table style="margin-top: 2rem;">
+                <thead><tr><th>Nom</th><th>Action</th></tr></thead>
+                <tbody id="categories-list"></tbody>
+            </table>
+        </article>
+        <article>
+            <h2>Gérer les Utilisateurs</h2>
+            <p><strong>Note :</strong> L'invitation de nouveaux utilisateurs se fait via le menu "Authentication" de Supabase.</p>
+            <table>
+                <thead><tr><th>Nom Complet</th><th>Email</th><th>Rôle</th><th>Action</th></tr></thead>
+                <tbody id="users-list"></tbody>
+            </table>
+        </article>
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

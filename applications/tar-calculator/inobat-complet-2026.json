@@ -1,0 +1,74 @@
+{
+  "source": "INOBAT 2026",
+  "dateValidite": "2026-01-01",
+  "tva": 8.1,
+  "categories": {
+    "1_piles_portables": {
+      "nom": "Piles portables et piles bouton",
+      "description": "En vrac ou intégrées dans un appareil",
+      "subcategories": {}
+    },
+    "2_piles_industrielles": {
+      "nom": "Piles industrielles",
+      "description": "En vrac ou intégrées dans un appareil",
+      "exemption": "avec possibilité d'exonération de la taxe, ORRChim art. 6.1 al. 3",
+      "subcategories": {}
+    },
+    "3_batteries_vehicules": {
+      "nom": "Batteries de véhicules",
+      "description": "Pour le démarrage, l'éclairage ou l'allumage",
+      "exemption": "avec possibilité d'exonération de la taxe, ORRChim art. 6.1 al. 3",
+      "subcategories": {}
+    }
+  },
+  "motsClefs": {
+    "pile": [
+      "pile",
+      "battery",
+      "batterie",
+      "accumulateur",
+      "cell"
+    ],
+    "rechargeable": [
+      "rechargeable",
+      "lithium",
+      "li-ion",
+      "nimh",
+      "nicd",
+      "lifepo4"
+    ],
+    "alcaline": [
+      "alcaline",
+      "alkaline"
+    ],
+    "zinc": [
+      "zinc",
+      "zinc-charbon",
+      "zinc-carbon"
+    ],
+    "outil": [
+      "perceuse",
+      "visseuse",
+      "scie",
+      "outil",
+      "tool",
+      "robot"
+    ],
+    "vehicule": [
+      "vélo",
+      "bike",
+      "ebike",
+      "scooter",
+      "trottinette",
+      "moto",
+      "auto",
+      "voiture"
+    ],
+    "industriel": [
+      "industriel",
+      "industrial",
+      "traction",
+      "solaire"
+    ]
+  }
+}

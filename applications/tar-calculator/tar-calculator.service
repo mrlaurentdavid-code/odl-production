@@ -1,0 +1,18 @@
+[Unit]
+Description=TAR Calculator API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tar-calculator
+ExecStart=/usr/bin/node /opt/tar-calculator/server.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tar-calculator
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

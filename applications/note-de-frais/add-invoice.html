@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O!deal - Ajouter une Facture</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul>
+                <li><a href="https://app.odl-tools.ch/dashboard" style="text-decoration: none;">← Dashboard</a></li>
+                <li><strong style="font-size: 1.2rem;">Nouvelle Facture</strong></li>
+            </ul>
+            <ul id="nav-links">
+                <li><a href="index.html">Voir les factures</a></li>
+                <li id="logout-li"><a href="#" id="logout-button">Déconnexion</a></li>
+            </ul>
+        </nav>
+
+        <article>
+            <form id="invoice-form">
+                <label for="justificatif">1. Choisissez un justificatif (PDF ou Image)</label>
+                <input type="file" id="justificatif" accept="application/pdf,image/*" required>
+                
+                <div id="analysis-spinner" style="display: none; text-align: center; margin: 2rem 0;">
+                    <progress></progress>
+                    <p>Analyse de la facture en cours...</p>
+                </div>
+
+                <fieldset id="invoice-details" disabled>
+                    <legend style="font-size: 1rem; font-weight: 500; margin-top: 1rem;">2. Vérifiez les informations extraites</legend>
+                    <div class="grid">
+                        <label>Fournisseur
+                            <input type="text" id="fournisseur" required>
+                        </label>
+                         <label>Date de la facture
+                            <input type="date" id="date" required>
+                        </label>
+                    </div>
+                    <div class="grid">
+                         <label>Montant TTC
+                            <input type="number" id="montant_ttc" step="0.01" required>
+                         </label>
+                         <label>Devise
+                             <select id="devise" required>
+                                <option value="CHF">CHF</option>
+                                <option value="EUR">EUR</option>
+                                <option value="USD">USD</option>
+                                <option value="CNY">CNY</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                         </label>
+                    </div>
+                    <div class="grid" id="conversion-row" style="display: none;">
+                        <label>Montant converti en CHF
+                            <input type="text" id="conversion-result" readonly>
+                        </label>
+                    </div>
+                     <div class="grid">
+                        <label>Montant HT (Optionnel)
+                            <input type="number" id="montant_ht" step="0.01">
+                        </label>
+                        <label>Montant TVA (Optionnel)
+                            <input type="number" id="montant_tva" step="0.01">
+                        </label>
+                    </div>
+                    <label>Catégorie
+                        <select id="categorie" required><option>Chargement...</option></select>
+                    </label>
+                    <label>Source de Paiement
+                        <select id="source_paiement" required><option>Chargement...</option></select>
+                    </label>
+                    <button type="submit" style="width: 100%; margin-top: 1rem;">Enregistrer la facture</button>
+                </fieldset>
+            </form>
+        </article>
+        
+        <canvas id="pdf-canvas" style="display: none;"></canvas>
+
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

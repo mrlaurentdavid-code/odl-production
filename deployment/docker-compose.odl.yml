@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # ODL Tools Dashboard (Next.js)
+  odl-tools-app:
+    build:
+      context: /opt/odl-tools
+      dockerfile: Dockerfile
+      args:
+          NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+          NEXT_PUBLIC_SITE_URL: https://app.odl-tools.ch
+    container_name: odl-tools-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - NEXT_PUBLIC_SITE_URL=https://app.odl-tools.ch
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.odl-tools.rule=Host(`app.odl-tools.ch`)"
+      - "traefik.http.routers.odl-tools.entrypoints=websecure"
+      - "traefik.http.routers.odl-tools.tls=true"
+      - "traefik.http.routers.odl-tools.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.odl-tools.loadbalancer.server.port=3001"
+
+  # TAR Calculator (Express + Anthropic)
+  tar-calculator:
+    build:
+      context: /opt/tar-calculator
+      dockerfile: Dockerfile
+    container_name: tar-calculator
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PORT=3000
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tar.rule=Host(`tar.odl-tools.ch`)"
+      - "traefik.http.routers.tar.entrypoints=websecure"
+      - "traefik.http.routers.tar.tls=true"
+      - "traefik.http.routers.tar.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.tar.loadbalancer.server.port=3000"
+
+  # Notes de Frais (Nginx statique)
+  ndf:
+    build:
+      context: /opt/note-de-frais
+      dockerfile: Dockerfile
+    container_name: ndf
+    restart: unless-stopped
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ndf.rule=Host(`ndf.odl-tools.ch`)"
+      - "traefik.http.routers.ndf.entrypoints=websecure"
+      - "traefik.http.routers.ndf.tls=true"
+      - "traefik.http.routers.ndf.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.ndf.loadbalancer.server.port=80"
+
+  # Notes de Frais API (Express + Claude Vision)
+  ndf-api:
+    build:
+      context: /opt/note-de-frais
+      dockerfile: Dockerfile.api
+    container_name: ndf-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ndf-api.rule=Host(`ndf-api.odl-tools.ch`)"
+      - "traefik.http.routers.ndf-api.entrypoints=websecure"
+      - "traefik.http.routers.ndf-api.tls=true"
+      - "traefik.http.routers.ndf-api.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.ndf-api.loadbalancer.server.port=3002"
+
+  # API Validation O!Deal (Next.js API Routes)
+  api-validation:
+    build:
+      context: /opt/api-validation
+      dockerfile: Dockerfile.api
+      args:
+          NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+          NEXT_PUBLIC_SITE_URL: https://api.odl-tools.ch
+    container_name: api-validation
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - NEXT_PUBLIC_SITE_URL=https://api.odl-tools.ch
+      - PORT=3003
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-validation.rule=Host(`api.odl-tools.ch`)"
+      - "traefik.http.routers.api-validation.entrypoints=websecure"
+      - "traefik.http.routers.api-validation.tls=true"
+      - "traefik.http.routers.api-validation.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.api-validation.loadbalancer.server.port=3003"
+
+networks:
+  root_default:
+    external: true

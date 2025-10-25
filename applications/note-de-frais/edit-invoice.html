@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O!deal - Modifier une Facture</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul><li><strong style="font-size: 1.2rem;">Modifier la Facture</strong></li></ul>
+            <ul id="nav-links">
+                <li><a href="#" id="cancel-edit">Annuler</a></li>
+                <li id="logout-li"><a href="#" id="logout-button">Déconnexion</a></li>
+            </ul>
+        </nav>
+        <article>
+             <form id="invoice-form">
+                <div class="grid">
+                    <label>Fournisseur<input type="text" id="fournisseur" required></label>
+                    <label>Date de la facture<input type="date" id="date" required></label>
+                </div>
+                <div class="grid">
+                    <label>Montant TTC<input type="number" id="montant_ttc" step="0.01" required></label>
+                    <label>Devise
+                        <select id="devise" required>
+                            <option value="CHF">CHF</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="CNY">CNY</option>
+                            <option value="GBP">GBP</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid" id="conversion-row" style="display: none;">
+                    <label>Montant converti en CHF
+                        <input type="text" id="conversion-result" readonly>
+                    </label>
+                </div>
+                <div class="grid">
+                    <label>Montant HT (Optionnel)<input type="number" id="montant_ht" step="0.01"></label>
+                    <label>Montant TVA (Optionnel)<input type="number" id="montant_tva" step="0.01"></label>
+                </div>
+                <label>Catégorie<select id="categorie" required><option>Chargement...</option></select></label>
+                <label>Source de Paiement<select id="source_paiement" required><option>Chargement...</option></select></label>
+                <p><strong>Justificatif actuel :</strong> <a href="#" id="current-file-link" target="_blank"></a></p>
+                <label for="justificatif">Changer le justificatif (optionnel)<input type="file" id="justificatif"></label>
+                <button type="submit" style="width: 100%; margin-top: 1rem;">Enregistrer les modifications</button>
+            </form>
+        </article>
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

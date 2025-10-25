@@ -1,0 +1,26 @@
+# À ajouter dans docker-compose.odl.yml
+
+  ndf-api:
+    build:
+      context: /opt/note-de-frais
+      dockerfile: Dockerfile.api
+    container_name: ndf-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    networks:
+      - root_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ndf-api.rule=Host(`ndf-api.odl-tools.ch`)"
+      - "traefik.http.routers.ndf-api.entrypoints=websecure"
+      - "traefik.http.routers.ndf-api.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.ndf-api.loadbalancer.server.port=3002"
+
+networks:
+  root_default:
+    external: true

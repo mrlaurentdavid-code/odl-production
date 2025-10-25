@@ -1,0 +1,109 @@
+version: "3.7"
+services:
+  traefik:
+    image: "traefik"
+    restart: always
+    command:
+      - "--api=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.mytlschallenge.acme.tlschallenge=true"
+      - "--certificatesresolvers.mytlschallenge.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.mytlschallenge.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - traefik_data:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/tar-web/users.htpasswd:/users.htpasswd:ro
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.n8n.rule=Host(`${SUBDOMAIN}.${DOMAIN_NAME}`)
+      - traefik.http.routers.n8n.tls=true
+      - traefik.http.routers.n8n.entrypoints=web,websecure
+      - traefik.http.routers.n8n.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.n8n.headers.SSLRedirect=true
+      - traefik.http.middlewares.n8n.headers.STSSeconds=315360000
+      - traefik.http.middlewares.n8n.headers.browserXSSFilter=true
+      - traefik.http.middlewares.n8n.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.n8n.headers.forceSTSHeader=true
+      - traefik.http.middlewares.n8n.headers.SSLHost=${DOMAIN_NAME}
+      - traefik.http.middlewares.n8n.headers.STSIncludeSubdomains=true
+      - traefik.http.middlewares.n8n.headers.STSPreload=true
+      - traefik.http.routers.n8n.middlewares=n8n@docker
+    environment:
+      - N8N_HOST=${SUBDOMAIN}.${DOMAIN_NAME}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://${SUBDOMAIN}.${DOMAIN_NAME}/
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - /local-files:/files
+  tar-api:
+    image: alpine/socat
+    restart: always
+    command: tcp-listen:3000,fork,reuseaddr tcp-connect:host.docker.internal:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.tarapi.rule=Host(`tar-api.odeal.ch`)
+      - traefik.http.routers.tarapi.tls=true
+      - traefik.http.routers.tarapi.entrypoints=web,websecure
+      - traefik.http.routers.tarapi.tls.certresolver=mytlschallenge
+      - traefik.http.services.tarapi.loadbalancer.server.port=3000
+  tar-web:
+    image: nginx:alpine
+    restart: always
+    volumes:
+      - /opt/tar-web:/usr/share/nginx/html:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.tarweb.rule=Host(`tar.odeal.ch`)
+      - traefik.http.routers.tarweb.tls=true
+      - traefik.http.routers.tarweb.entrypoints=web,websecure
+      - traefik.http.routers.tarweb.tls.certresolver=mytlschallenge
+      - traefik.http.routers.tarweb.middlewares=tar-auth
+      - traefik.http.middlewares.tar-auth.basicauth.usersfile=/users.htpasswd
+  ndf-web:
+    image: nginx:alpine
+    restart: always
+    volumes:
+      - /opt/note-de-frais:/usr/share/nginx/html:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ndfweb.rule=Host(`ndf.odeal.ch`)
+      - traefik.http.routers.ndfweb.tls=true
+      - traefik.http.routers.ndfweb.entrypoints=web,websecure
+      - traefik.http.routers.ndfweb.tls.certresolver=mytlschallenge
+  odl-tools:
+    image: alpine/socat
+    restart: always
+    command: tcp-listen:3001,fork,reuseaddr tcp-connect:host.docker.internal:3001
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.odltools.rule=Host(`odl-tools.ch`)
+      - traefik.http.routers.odltools.tls=true
+      - traefik.http.routers.odltools.entrypoints=web,websecure
+      - traefik.http.routers.odltools.tls.certresolver=mytlschallenge
+      - traefik.http.services.odltools.loadbalancer.server.port=3001
+volumes:
+  traefik_data:
+    external: true
+  n8n_data:
+    external: true

@@ -1,0 +1,432 @@
+// ===================================
+// 📄 server.js - TAR Calculator API v2.0
+// Avec OpenAI + Barèmes complets 2026
+// ===================================
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configuration OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// Charger les barèmes complets
+let SWICO_DATA, SENS_DATA, INOBAT_DATA;
+
+try {
+  SWICO_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'swico-complet-2026.json'), 'utf8'));
+  SENS_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'sens-complet-2026.json'), 'utf8'));
+  INOBAT_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'inobat-complet-2026.json'), 'utf8'));
+  console.log('✅ Barèmes complets chargés');
+  console.log(`📊 SWICO: ${Object.values(SWICO_DATA.categories).flat().length} produits`);
+  console.log(`📦 SENS: ${Object.keys(SENS_DATA.categories).length} catégories`);
+  console.log(`🔋 INOBAT: ${Object.keys(INOBAT_DATA.categories).length} catégories`);
+} catch (error) {
+  console.error('❌ Erreur chargement barèmes:', error);
+  process.exit(1);
+}
+
+// Taux de TVA Suisse
+const TVA_RATES = {
+  NORMAL: 8.1,
+  REDUIT: 2.6,
+  SPECIAL: 3.8,
+  ZERO: 0
+};
+
+// Fonction pour enrichir les données produit avec OpenAI
+async function enrichProductData(ean, description, marque, poids, refFournisseur) {
+  try {
+    const prompt = `Tu es un expert en identification de produits avec accès à une base de données mondiale de codes EAN.
+
+📊 DONNÉES FOURNIES :
+${ean ? `- 🔢 Code EAN: ${ean} (PRIORITÉ ABSOLUE - Recherche d'abord le produit par ce code)` : ''}
+${description ? `- 📝 Description: ${description}` : ''}
+${marque ? `- 🏷️ Marque: ${marque}` : ''}
+${poids ? `- ⚖️ Poids: ${poids} kg` : ''}
+${refFournisseur ? `- 📋 Référence: ${refFournisseur}` : ''}
+
+🎯 RÈGLES DE PRIORITÉ (ORDRE STRICT) :
+1. **Si un EAN est fourni** : 
+   - Recherche PRIORITAIREMENT le produit réel correspondant à cet EAN dans tes connaissances
+   - IGNORE toute description/marque contradictoire fournie par l'utilisateur
+   - Remplis TOUTES les informations depuis l'EAN (nom exact, marque réelle, poids, catégorie)
+   - Confiance : 95-100 si EAN trouvé dans tes données
+
+2. **Si EAN inconnu mais description fournie** :
+   - Utilise la description comme référence
+   - Estime les informations manquantes
+   - Confiance : 70-85
+
+3. **Si aucun EAN** :
+   - Base-toi sur description + marque
+   - Confiance : 60-80
+
+📋 FORMAT JSON ATTENDU :
+{
+  "nom_produit": "Nom complet EXACT du produit (depuis EAN si disponible)",
+  "marque": "Marque RÉELLE (depuis EAN si disponible)",
+  "categorie": "smartphone|tablette|ordinateur|ecran|instrument_musique|imprimante|console|pile|batterie|electromenager|refrigeration|autoradio|enceinte|casque|appareil_photo|non_soumis",
+  "poids_kg": nombre (trouve le poids réel depuis EAN, sinon estime),
+  "taille_pouces": nombre ou null (pour écrans/ordinateurs/instruments),
+  "organisme_tar": "swico|innobat|sens|aucun",
+  "type_tva_suisse": "normal|reduit|special|zero",
+  "raison_tva": "Explication courte du taux TVA",
+  "confiance": nombre (95-100 si EAN connu, 70-85 si déduit, 50-69 si incertain)
+}
+
+🏷️ CATÉGORIES DÉTAILLÉES :
+
+📱 organisme_tar = "swico" pour :
+   - Smartphones, tablettes, ordinateurs (laptop/desktop)
+   - Écrans, TV, moniteurs
+   - Consoles de jeux, imprimantes, scanners
+   - Appareils photo, caméras
+   - Enceintes amplifiées, casques avec électronique
+   - **INSTRUMENTS DE MUSIQUE ÉLECTRONIQUES** (synthés, contrôleurs MIDI, pianos numériques)
+   - Autoradios, GPS, drones
+
+🏠 organisme_tar = "sens" pour :
+   - Réfrigérateurs, congélateurs, machines à laver, lave-vaisselle
+   - Cuisinières, fours, micro-ondes, BOUILLOIRES
+   - Grille-pain, cafetières, mixeurs, robots cuisine
+   - Aspirateurs, fers à repasser, sèche-cheveux
+   - Cigarettes électroniques, vaporettes
+   - Radiateurs, ventilateurs, climatiseurs
+
+🔋 organisme_tar = "innobat" pour :
+   - Piles portables (AA, AAA, 9V, etc.)
+   - Batteries rechargeables portables
+
+❌ organisme_tar = "aucun" pour :
+   - Vêtements, lunettes sans électronique, bijoux
+   - Livres, jouets purement mécaniques
+   - Meubles, décoration
+
+💳 type_tva_suisse :
+   - "normal" (8.1%) : électronique, électroménager, instruments musique
+   - "reduit" (2.6%) : livres, journaux, médicaments, alimentation
+   - "special" (3.8%) : hébergement
+   - "zero" (0%) : exportations
+
+⚠️ RAPPEL CRITIQUE : Si EAN fourni, TROUVE LE VRAI PRODUIT correspondant à ce code, ne te base PAS sur une description potentiellement erronée !
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      response_format: { type: 'json_object' }
+    });
+
+    const result = JSON.parse(completion.choices[0].message.content);
+    return result;
+
+  } catch (error) {
+    console.error('❌ Erreur OpenAI:', error);
+    throw new Error('Impossible d\'identifier le produit avec l\'IA');
+  }
+}
+// Fonction pour calculer la TAR avec les barèmes complets
+function calculateTAR(productData) {
+  const { organisme_tar, categorie, poids_kg, taille_pouces, nom_produit } = productData;
+
+  let tarifHT = 0;
+  let typeApplique = '';
+
+  // Produits non soumis à la TAR
+  if (organisme_tar === 'aucun') {
+    return {
+      tarifHT: '0.00',
+      typeApplique: 'Non soumis à la TAR',
+      nonSoumis: true
+    };
+  }
+
+  // SWICO - Recherche dans les barèmes complets
+  if (organisme_tar === 'swico') {
+    // Smartphones
+    if (categorie === 'smartphone') {
+      tarifHT = 0.19; // Tarif SWICO correct
+      typeApplique = 'Smartphone/Smartwatch';
+    }
+    // Tablettes
+    else if (categorie === 'tablette') {
+      tarifHT = 0.46;
+      typeApplique = 'Tablette';
+    }
+    // Ordinateurs portables
+    else if (categorie === 'ordinateur') {
+      const taille = taille_pouces || 14;
+      if (taille < 12) {
+        tarifHT = 2.31;
+        typeApplique = 'Notebook < 12"';
+      } else {
+        tarifHT = 5.57;
+        typeApplique = 'Notebook ≥ 12"';
+      }
+    }
+    // Écrans / TV
+    else if (categorie === 'ecran') {
+      const taille = taille_pouces || 24;
+      if (taille < 8) {
+        tarifHT = 0.19;
+        typeApplique = 'Écran < 8"';
+      } else if (taille < 15) {
+        tarifHT = 2.31;
+        typeApplique = 'Écran 8-14"';
+      } else if (taille < 33) {
+        tarifHT = 5.57;
+        typeApplique = 'Écran 15-32"';
+      } else if (taille < 45) {
+        tarifHT = 13.88;
+        typeApplique = 'Écran 33-44"';
+      } else if (taille < 55) {
+        tarifHT = 18.50;
+        typeApplique = 'Écran 45-54"';
+      } else if (taille < 70) {
+        tarifHT = 27.75;
+        typeApplique = 'Écran 55-69"';
+      } else if (taille < 90) {
+        tarifHT = 37.00;
+        typeApplique = 'Écran 70-89"';
+      } else {
+        tarifHT = 46.25;
+        typeApplique = 'Écran ≥ 90"';
+      }
+    }
+    // Imprimantes
+    else if (categorie === 'imprimante') {
+      tarifHT = 2.31;
+      typeApplique = 'Imprimante/Scanner';
+    }
+    // Consoles
+    else if (categorie === 'console') {
+      tarifHT = 2.31;
+      typeApplique = 'Console de jeux';
+    }
+    // Enceintes et casques
+    else if (categorie === 'enceinte' || categorie === 'casque') {
+      tarifHT = 0.46;
+      typeApplique = categorie === 'enceinte' ? 'Enceinte' : 'Casque audio';
+    }
+    // Appareils photo
+    else if (categorie === 'appareil_photo') {
+      tarifHT = 0.46;
+      typeApplique = 'Appareil photo';
+    }
+    // Autoradio
+    else if (categorie === 'autoradio') {
+      tarifHT = 2.31;
+      typeApplique = 'Autoradio/Système audio';
+    }
+    // Instruments de musique
+    else if (categorie === 'instrument_musique') {
+      const poids = poids_kg || 2;
+      if (poids < 3) {
+        tarifHT = 2.31;
+        typeApplique = 'Instrument de musique < 3kg';
+      } else {
+        tarifHT = 5.57;
+        typeApplique = 'Instrument de musique ≥ 3kg';
+      }
+    }
+  }
+  
+  // INOBAT - Batteries
+  else if (organisme_tar === 'innobat') {
+    const poids = poids_kg || 0.25;
+    
+    if (categorie === 'pile') {
+      // Piles standards
+      tarifHT = 0.05;
+      typeApplique = 'Pile standard';
+    } else if (categorie === 'batterie') {
+      // Batteries rechargeables par poids
+      if (poids < 0.25) {
+        tarifHT = 0.25;
+        typeApplique = 'Batterie < 250g';
+      } else if (poids < 0.75) {
+        tarifHT = 0.80;
+        typeApplique = 'Batterie 250-750g';
+      } else if (poids < 5) {
+        tarifHT = 1.60;
+        typeApplique = 'Batterie 750g-5kg';
+      } else {
+        tarifHT = 9.60;
+        typeApplique = 'Batterie 5-15kg';
+      }
+    }
+  }
+  
+  // SENS - Électroménager
+  else if (organisme_tar === 'sens') {
+    const poids = poids_kg || 1;
+    
+    if (categorie === 'refrigeration') {
+      // Réfrigération
+      const tranches = SENS_DATA.categories['200_Refrigeration'].tranches;
+      const tranche = tranches.find(t => poids >= t.poidsMin && poids < t.poidsMax);
+      if (tranche) {
+        tarifHT = tranche.tarifHT;
+        typeApplique = `Réfrigération ${tranche.poidsMin}-${tranche.poidsMax}kg`;
+      }
+    } else {
+      // Électroménager général
+      const tranches = SENS_DATA.categories['100_SENS_General'].tranches;
+      const tranche = tranches.find(t => poids >= t.poidsMin && poids < t.poidsMax);
+      if (tranche) {
+        tarifHT = tranche.tarifHT;
+        typeApplique = `Électroménager ${tranche.poidsMin}-${tranche.poidsMax}kg`;
+      }
+    }
+  }
+
+  return {
+    tarifHT: tarifHT.toFixed(2),
+    typeApplique
+  };
+}
+
+// Route principale de calcul TAR
+app.post('/api/calculate-tar', async (req, res) => {
+  try {
+    const { ean, description, marque, poids, refFournisseur } = req.body;
+
+    console.log('📥 Requête:', { ean, description, marque, poids });
+
+    // Validation
+    if (!ean && !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez fournir au moins un code EAN ou une description'
+      });
+    }
+
+    // Enrichissement via OpenAI
+    const productData = await enrichProductData(
+      ean,
+      description,
+      marque,
+      poids,
+      refFournisseur
+    );
+
+    console.log('✅ Produit identifié:', productData.nom_produit);
+
+    // Méthode de recherche
+    const searchMethod = ean && description ? '🎯 EAN + Description' :
+                        ean ? '🎯 EAN' :
+                        '🔍 Description';
+
+    // Calcul de la TAR
+    const { tarifHT, typeApplique, nonSoumis } = calculateTAR(productData);
+
+    // Si produit non soumis
+    if (nonSoumis) {
+      return res.json({
+        success: true,
+        product: {
+          nom: productData.nom_produit,
+          marque: productData.marque,
+          poids: productData.poids_kg,
+          taille: productData.taille_pouces
+        },
+        tar: {
+          organisme: 'AUCUN',
+          type: 'Non soumis à la TAR',
+          tarifHT: '0.00',
+          tarifTTC: '0.00',
+          tva: 0,
+          raisonTVA: 'Produit non soumis à la taxe anticipée de recyclage'
+        },
+        nonSoumis: true,
+        confidence: productData.confiance,
+        searchMethod
+      });
+    }
+
+    // Calcul TVA
+    const tvaRate = productData.type_tva_suisse === 'normal' ? TVA_RATES.NORMAL :
+                   productData.type_tva_suisse === 'reduit' ? TVA_RATES.REDUIT :
+                   productData.type_tva_suisse === 'special' ? TVA_RATES.SPECIAL :
+                   TVA_RATES.ZERO;
+
+    const tarifTTC = (parseFloat(tarifHT) * (1 + tvaRate / 100)).toFixed(2);
+
+    // Réponse
+    res.json({
+      success: true,
+      product: {
+        nom: productData.nom_produit,
+        marque: productData.marque,
+        poids: productData.poids_kg,
+        taille: productData.taille_pouces
+      },
+      tar: {
+        organisme: productData.organisme_tar.toUpperCase(),
+        type: typeApplique,
+        tarifHT,
+        tarifTTC,
+        tva: tvaRate,
+        raisonTVA: productData.raison_tva
+      },
+      confidence: productData.confiance,
+      searchMethod
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors du calcul'
+    });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    baremes: {
+      swico: 'Complet 2026',
+      sens: 'Complet 2026',
+      inobat: 'Complet 2026'
+    }
+  });
+});
+
+// Route racine
+app.get('/', (req, res) => {
+  res.json({
+    service: 'TAR Calculator API',
+    version: '2.0.0',
+    endpoints: {
+      calculate: 'POST /api/calculate-tar',
+      health: 'GET /health'
+    }
+  });
+});
+
+// Démarrage
+app.listen(PORT, () => {
+  console.log(`✅ Serveur TAR Calculator v2.0 démarré sur le port ${PORT}`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+  console.log(`🤖 OpenAI: ${openai.apiKey ? 'Configuré' : 'NON configuré'}`);
+});

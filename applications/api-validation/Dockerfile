@@ -1,0 +1,58 @@
+# Dockerfile pour ODL Tools Dashboard (Next.js 15)
+FROM node:20-alpine AS base
+
+# Stage 1: Dependencies
+FROM base AS deps
+WORKDIR /app
+
+# Copier les fichiers de dépendances
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Stage 2: Builder
+FROM base AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+# Build Next.js
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Build arguments pour les variables NEXT_PUBLIC
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_SITE_URL
+
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
+RUN npm run build
+
+# Stage 3: Runner
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copier les fichiers nécessaires
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3001
+
+ENV PORT=3001
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]

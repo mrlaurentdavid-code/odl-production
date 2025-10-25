@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O!deal - Tableau de Bord</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul>
+                <li><a href="https://app.odl-tools.ch/dashboard">← Dashboard</a></li>
+                <li><strong style="font-size: 1.2rem;">Factures</strong></li>
+            </ul>
+            <ul id="nav-links">
+                <li id="admin-link" style="display: none;"><a href="admin.html">Administration</a></li>
+                <li><a href="add-invoice.html" role="button">Ajouter une facture</a></li>
+                <li id="logout-li"><a href="#" id="logout-button">Déconnexion</a></li>
+            </ul>
+        </nav>
+
+        <section id="invoice-filters">
+            <details open>
+                <summary>Filtrer les factures</summary>
+                <fieldset style="border: none; padding: 0; margin-top: 1rem;">
+                    <div class="grid">
+                        <input type="text" id="filter-fournisseur" placeholder="Filtrer par fournisseur...">
+                        <select id="filter-categorie">
+                            <option value="">Toutes les catégories</option>
+                        </select>
+                        <select id="filter-source">
+                            <option value="">Toutes les sources</option>
+                        </select>
+                    </div>
+                    <div class="grid">
+                        <select id="filter-declarant">
+                            <option value="">Tous les déclarants</option>
+                        </select>
+                        <label>Du<input type="date" id="filter-date-start"></label>
+                        <label>Au<input type="date" id="filter-date-end"></label>
+                        <select id="filter-status">
+                            <option value="">Tous les statuts</option>
+                            <option value="En attente de visa">En attente de visa</option>
+                            <option value="Visé">Visé</option>
+                            <option value="Validé">Validé</option>
+                            <option value="Remboursé">Remboursé</option>
+                            <option value="Refusé">Refusé</option>
+                        </select>
+                    </div>
+                    <button onclick="applyFilters()" style="width: 100%; margin-top: 0.5rem;">Appliquer les filtres</button>
+                    <button onclick="resetFilters()" class="secondary" style="width: 100%; margin-top: 0.5rem;">Réinitialiser</button>
+                </fieldset>
+            </details>
+        </section>
+
+        <article>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Aperçu</th>
+                            <th>Date</th>
+                            <th>Fournisseur</th>
+                            <th>Déclarant</th>
+                            <th>Catégorie</th>
+                            <th>Source de Paiement</th>
+                            <th>Statut</th>
+                            <th>Montant TTC</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoices-list">
+                        <tr><td colspan="8" style="text-align: center;">Chargement...</td></tr>
+                    </tbody>
+                    <tfoot>
+                        <tr id="total-row"></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </article>
+    </main>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

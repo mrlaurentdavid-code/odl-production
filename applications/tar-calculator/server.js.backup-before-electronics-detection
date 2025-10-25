@@ -1,0 +1,963 @@
+// ===================================
+// 📄 server.js - TAR Calculator API v2.0
+// Avec OpenAI + Barèmes complets 2026
+// ===================================
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const OpenAI = require('openai');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configuration OpenAI
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const { getJson } = require("serpapi");
+const { createClient } = require("@supabase/supabase-js");
+const { extractCompleteProductData } = require("./enriched-extractor");
+const { getProductFromCache: getCatalogProduct, saveEnrichedProduct } = require("./supabase-cache");
+
+// Initialiser le client Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
+
+// Fonction pour chercher un produit dans le cache
+async function getProductFromCache(ean) {
+  if (!ean) return null;
+  
+  try {
+    console.log(`📦 Recherche cache pour EAN ${ean}...`);
+    
+    const { data, error } = await supabase
+      .from("products_cache")
+      .select("*")
+      .eq("ean", ean)
+      .single();
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        // Pas trouve - normal
+        console.log(`❌ EAN ${ean} pas en cache`);
+        return null;
+      }
+      console.error("Erreur cache:", error);
+      return null;
+    }
+    
+    // Incrementer le compteur de recherches
+    await supabase
+      .from("products_cache")
+      .update({ 
+        nb_recherches: data.nb_recherches + 1,
+        last_searched_at: new Date().toISOString()
+      })
+      .eq("ean", ean);
+    
+    console.log(`✅ Cache hit! Produit: ${data.nom_produit} (recherche #${data.nb_recherches + 1})`);
+    return data;
+    
+  } catch (error) {
+    console.error("Erreur cache:", error.message);
+    return null;
+  }
+}
+
+// Fonction pour sauvegarder un produit dans le cache
+async function saveProductToCache(productData) {
+  try {
+    console.log(`💾 Sauvegarde en cache: ${productData.nom_produit}...`);
+    
+    const { data, error } = await supabase
+      .from("products_cache")
+      .insert([productData])
+      .select()
+      .single();
+    
+    if (error) {
+      if (error.code === "23505") {
+        // Duplicate - produit deja en cache, on met a jour
+        console.log(`⚠️ EAN ${productData.ean} existe deja, mise a jour...`);
+        const { data: updated, error: updateError } = await supabase
+          .from("products_cache")
+          .update({
+            ...productData,
+            updated_at: new Date().toISOString(),
+            nb_recherches: productData.nb_recherches || 1
+          })
+          .eq("ean", productData.ean)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error("Erreur update cache:", updateError);
+          return null;
+        }
+        return updated;
+      }
+      console.error("Erreur save cache:", error);
+      return null;
+    }
+    
+    console.log(`✅ Produit sauvegarde en cache (ID: ${data.id})`);
+    return data;
+    
+  } catch (error) {
+    console.error("Erreur save cache:", error.message);
+    return null;
+  }
+}
+
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, "public")));
+
+// Charger les barèmes complets
+let SWICO_DATA, SENS_DATA, INOBAT_DATA;
+
+try {
+  SWICO_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'swico-complet-2026.json'), 'utf8'));
+  SENS_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'sens-complet-2026.json'), 'utf8'));
+  INOBAT_DATA = JSON.parse(fs.readFileSync(path.join(__dirname, 'inobat-complet-2026.json'), 'utf8'));
+  console.log('✅ Barèmes complets chargés');
+  console.log(`📊 SWICO: ${Object.values(SWICO_DATA.categories).flat().length} produits`);
+  console.log(`📦 SENS: ${Object.keys(SENS_DATA.categories).length} catégories`);
+  console.log(`🔋 INOBAT: ${Object.keys(INOBAT_DATA.categories).length} catégories`);
+} catch (error) {
+  console.error('❌ Erreur chargement barèmes:', error);
+  process.exit(1);
+}
+
+// Taux de TVA Suisse
+const TVA_RATES = {
+  NORMAL: 8.1,
+  REDUIT: 2.6,
+  SPECIAL: 3.8,
+  ZERO: 0
+};
+
+
+// Fonction de recherche Google via SerpAPI
+async function searchProductByEAN(ean) {
+  if (!ean || !process.env.SERPAPI_KEY) {
+    return null;
+  }
+  
+  try {
+    console.log(`🔍 Recherche Google pour EAN ${ean}...`);
+    
+    const response = await getJson({
+      engine: "google",
+      q: ean,
+      api_key: process.env.SERPAPI_KEY,
+      num: 5
+    });
+    
+    if (!response.organic_results || response.organic_results.length === 0) {
+      console.log("❌ Aucun résultat Google trouvé");
+      return null;
+    }
+    
+    // Extraire les informations des premiers résultats
+    const results = response.organic_results.slice(0, 3);
+    const texts = results.map(r => `${r.title} - ${r.snippet}`).join("\n");
+    
+    console.log("✅ Résultats Google obtenus");
+    return {
+      query: ean,
+      results: texts,
+      urls: results.map(r => r.link)
+    };
+    
+  } catch (error) {
+    console.error("❌ Erreur SerpAPI:", error.message);
+    return null;
+  }
+}
+
+// Fonction pour enrichir les données produit avec OpenAI
+// Fonction pour rechercher un EAN dans une base de données externe
+async function lookupEAN(ean) {
+  if (!ean || ean.length < 8) return null;
+  
+  try {
+    // Tentative 1 : API gratuite EAN-Search.org
+    const response = await fetch(`https://api.ean-search.org/api?token=free&op=barcode-lookup&format=json&ean=${ean}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.length > 0 && data[0].name) {
+        return {
+          name: data[0].name,
+          brand: data[0].company || null,
+          category: data[0].categoryName || null,
+          source: 'ean-search.org'
+        };
+      }
+    }
+  } catch (error) {
+    console.log('EAN lookup failed:', error.message);
+  }
+  
+  return null;
+}
+
+async function enrichProductData(ean, description, marque, poids, refFournisseur) {
+  try {
+    // ETAPE 0: Verifier le cache Supabase en priorite
+    if (ean) {
+      const cached = await getProductFromCache(ean);
+      if (cached) {
+        console.log(`🎯 Cache Supabase hit! Economies SerpAPI`);
+        return {
+          nom_produit: cached.nom_produit,
+          marque: cached.marque,
+          categorie: cached.categorie_tar,
+          poids_kg: parseFloat(cached.poids_kg) || null,
+          taille_pouces: null,
+          organisme_tar: cached.organisme_tar,
+          type_tva_suisse: "normal",
+          raison_tva: "Electronique",
+          confiance: cached.confiance_score || 100
+        };
+      }
+    }
+
+    // Recherche EAN dans base externe
+    // ETAPE 1: Recherche Google via SerpAPI
+    if (ean && process.env.SERPAPI_KEY) {
+      const googleResults = await searchProductByEAN(ean);
+      if (googleResults && googleResults.results) {
+        // Utiliser GPT pour extraire les infos des resultats Google
+        const extractPrompt = `Analyse ces resultats de recherche Google pour EAN ${ean}:
+
+${googleResults.results}
+
+Extrait le nom exact du produit, la marque, et le poids si mentionne.
+
+Reponds en JSON: {"nom": "nom complet", "marque": "marque", "poids_kg": nombre_ou_null}`;
+        
+        try {
+          const extraction = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [{role: "user", content: extractPrompt}],
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+          });
+          
+          const extracted = JSON.parse(extraction.choices[0].message.content);
+          if (extracted.nom) {
+            console.log(`✅ Google trouve: ${extracted.nom}`);
+            description = extracted.nom;
+            marque = extracted.marque || marque;
+            poids = extracted.poids_kg || poids;
+          }
+        } catch (e) {
+          console.log("⚠️ Erreur extraction Google:", e.message);
+        }
+      }
+    }
+
+    if (ean) {
+      try {
+        const eanResponse = await fetch(`https://api.ean-search.org/api?token=free&op=barcode-lookup&format=json&ean=${ean}`);
+        if (eanResponse.ok) {
+          const eanResult = await eanResponse.json();
+          if (eanResult && eanResult.length > 0 && eanResult[0].name) {
+            console.log(`✅ EAN trouvé: ${eanResult[0].name}`);
+            description = eanResult[0].name;
+            marque = eanResult[0].company || marque;
+          }
+        }
+      } catch (e) {
+        console.log("⚠️ Erreur recherche EAN:", e.message);
+      }
+    }
+
+    const prompt = `Tu es un expert en identification de produits avec accès à une base de données mondiale de codes EAN.
+
+📊 DONNÉES FOURNIES :
+${ean ? `- 🔢 Code EAN: ${ean} (PRIORITÉ ABSOLUE - Recherche d'abord le produit par ce code)` : ''}
+${description ? `- 📝 Description: ${description}` : ''}
+${marque ? `- 🏷️ Marque: ${marque}` : ''}
+${poids ? `- ⚖️ Poids: ${poids} kg` : ''}
+${refFournisseur ? `- 📋 Référence: ${refFournisseur}` : ''}
+
+🎯 RÈGLES DE PRIORITÉ (ORDRE STRICT) :
+1. **Si un EAN est fourni** : 
+   - Recherche PRIORITAIREMENT le produit réel correspondant à cet EAN dans tes connaissances
+   - IGNORE toute description/marque contradictoire fournie par l'utilisateur
+   - Remplis TOUTES les informations depuis l'EAN (nom exact, marque réelle, poids, catégorie)
+   - Confiance : 95-100 si EAN trouvé dans tes données
+   - ⚠️ ATTENTION: Vérifie la date de sortie du produit. Privilégie toujours le modèle le plus récent si plusieurs correspondent
+   - Pour les gammes Sonos: Five (2020) a remplacé Play:5, One a remplacé Play:1
+
+2. **Si EAN inconnu mais description fournie** :
+   - Utilise la description comme référence
+   - Estime les informations manquantes
+   - Confiance : 70-85
+
+3. **Si aucun EAN** :
+   - Base-toi sur description + marque
+   - Confiance : 60-80
+
+⚠️ EXEMPLES CRITIQUES DE PRIORITÉ EAN :
+
+**Exemple 1 - EAN prioritaire même si description erronée :**
+Entrée : EAN=3663701006329, Description=Kontrol S2, Marque=Native Instruments
+→ Le produit RÉEL pour cet EAN est Dualo du-touch S (instrument de musique)
+→ Tu DOIS retourner : nom=Dualo du-touch S, marque=Dualo, categorie=instrument_musique
+→ Tu NE DOIS PAS utiliser la description Kontrol S2 qui est contradictoire
+
+**Exemple 1b - Sonos Five vs Play:1 :**
+n**Exemple 1c - Sonos Move 2 :**
+Entree : EAN=8720862501478, Description=enceinte
+→ Le produit REEL est Sonos Move 2 (enceinte portable, 3 kg, 499 EUR)
+→ Retourne : nom=Sonos Move 2, marque=Sonos, poids=3.0, categorie=enceinte
+→ NE CONFONDS PAS avec dautres produits Philips ou autres marques
+Entrée : EAN=8717755777126, Description=enceinte
+→ Recherche le produit EXACT pour cet EAN dans tes connaissances
+→ Si cet EAN correspond à Sonos Five : retourne nom=Sonos Five, marque=Sonos
+→ Si tes données sont incertaines, privilégie les informations les plus récentes
+→ IMPORTANT: Sonos Five (lancé 2020) a remplacé Sonos Play:5 (2015)
+→ Tu NE DOIS PAS utiliser la description Kontrol S2 qui est contradictoire
+
+**Exemple 2 - EAN inconnu, utiliser description :**
+Entrée : EAN=9999999999999, Description=iPhone 15 Pro, Marque=Apple
+→ EAN inconnu dans tes données
+→ Tu peux utiliser la description : nom=iPhone 15 Pro, marque=Apple, confiance=75
+
+**Exemple 3 - Pas d'EAN :**
+Entrée : Description=Smartphone dernière génération, Marque=Samsung
+→ Estime le meilleur match : nom=Samsung Galaxy S24, confiance=70
+
+📋 FORMAT JSON ATTENDU :
+   - Base-toi sur description + marque
+   - Confiance : 60-80
+
+📋 FORMAT JSON ATTENDU :
+{
+  "nom_produit": "Nom complet EXACT du produit (depuis EAN si disponible)",
+  "marque": "Marque RÉELLE (depuis EAN si disponible)",
+  "categorie": "smartphone|tablette|ordinateur|ecran|instrument_musique|imprimante|console|pile|batterie|electromenager|refrigeration|autoradio|enceinte|casque|appareil_photo|non_soumis",
+  "poids_kg": nombre (trouve le poids réel depuis EAN, sinon estime),
+  "taille_pouces": nombre ou null (pour écrans/ordinateurs/instruments),
+  "organisme_tar": "swico|innobat|sens|aucun",
+  "type_tva_suisse": "normal|reduit|special|zero",
+  "raison_tva": "Explication courte du taux TVA",
+  "confiance": nombre (95-100 si EAN connu, 70-85 si déduit, 50-69 si incertain)
+}
+
+🏷️ CATÉGORIES DÉTAILLÉES :
+
+📱 organisme_tar = "swico" pour :
+   - Smartphones, tablettes, ordinateurs (laptop/desktop)
+   - Écrans, TV, moniteurs
+   - Consoles de jeux, imprimantes, scanners
+   - Appareils photo, caméras
+   - Enceintes amplifiées, casques avec électronique
+   - **INSTRUMENTS DE MUSIQUE ÉLECTRONIQUES** (synthés, contrôleurs MIDI, pianos numériques)
+   - Autoradios, GPS, drones
+
+🏠 organisme_tar = "sens" pour :
+   - Réfrigérateurs, congélateurs, machines à laver, lave-vaisselle
+   - Cuisinières, fours, micro-ondes, BOUILLOIRES
+   - Grille-pain, cafetières, mixeurs, robots cuisine
+   - Aspirateurs, fers à repasser, sèche-cheveux
+   - Cigarettes électroniques, vaporettes
+   - Radiateurs, ventilateurs, climatiseurs
+
+🔋 organisme_tar = "innobat" pour :
+   - Piles portables (AA, AAA, 9V, etc.)
+   - Batteries rechargeables portables
+
+❌ organisme_tar = "aucun" pour :
+   - Vêtements, lunettes sans électronique, bijoux
+   - Livres, jouets purement mécaniques
+   - Meubles, décoration
+
+💳 type_tva_suisse :
+   - "normal" (8.1%) : électronique, électroménager, instruments musique
+   - "reduit" (2.6%) : livres, journaux, médicaments, alimentation
+   - "special" (3.8%) : hébergement
+   - "zero" (0%) : exportations
+
+⚠️ RAPPEL CRITIQUE : Si EAN fourni, TROUVE LE VRAI PRODUIT correspondant à ce code, ne te base PAS sur une description potentiellement erronée !
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      response_format: { type: 'json_object' }
+    });
+
+    const result = JSON.parse(completion.choices[0].message.content);
+    
+    // Sauvegarder en cache Supabase pour futurs appels
+    if (ean && result.nom_produit) {
+      const cacheData = {
+        ean: ean,
+        nom_produit: result.nom_produit,
+        marque: result.marque || null,
+        description_longue: description || null,
+        poids_kg: result.poids_kg || poids || null,
+        categorie_tar: result.categorie || null,
+        organisme_tar: result.organisme_tar || null,
+        tarif_ht: null, // Sera calcule apres
+        tarif_ttc: null,
+        taux_tva: 8.1,
+        confiance_score: result.confiance || 80,
+        recherche_source: "serpapi",
+        urls_sources: null
+      };
+      
+      // Sauvegarde asynchrone (ne bloque pas la reponse)
+      saveProductToCache(cacheData).catch(err => 
+        console.error("Erreur save cache:", err.message)
+      );
+    }
+    
+    return result;
+
+  } catch (error) {
+    console.error('❌ Erreur OpenAI:', error);
+    throw new Error('Impossible d\'identifier le produit avec l\'IA');
+  }
+}
+// Fonction pour calculer la TAR avec les barèmes complets
+function calculateTAR(productData) {
+  const { organisme_tar, categorie, poids_kg, taille_pouces, nom_produit } = productData;
+
+  let tarifHT = 0;
+  let typeApplique = '';
+
+  // Produits non soumis à la TAR
+  if (organisme_tar === 'aucun') {
+    return {
+      tarifHT: '0.00',
+      typeApplique: 'Non soumis à la TAR',
+      nonSoumis: true
+    };
+  }
+
+  // SWICO - Recherche dans les barèmes complets
+  if (organisme_tar === 'swico') {
+    // Smartphones
+    if (categorie === 'smartphone') {
+      tarifHT = 0.19; // Tarif SWICO correct
+      typeApplique = 'Smartphone/Smartwatch';
+    }
+    // Tablettes
+    else if (categorie === 'tablette') {
+      tarifHT = 0.46;
+      typeApplique = 'Tablette';
+    }
+    // Ordinateurs portables
+    else if (categorie === 'ordinateur') {
+      const taille = taille_pouces || 14;
+      if (taille < 12) {
+        tarifHT = 2.31;
+        typeApplique = 'Notebook < 12"';
+      } else {
+        tarifHT = 5.57;
+        typeApplique = 'Notebook ≥ 12"';
+      }
+    }
+    // Écrans / TV
+    else if (categorie === 'ecran') {
+      const taille = taille_pouces || 24;
+      if (taille < 8) {
+        tarifHT = 0.19;
+        typeApplique = 'Écran < 8"';
+      } else if (taille < 15) {
+        tarifHT = 2.31;
+        typeApplique = 'Écran 8-14"';
+      } else if (taille < 33) {
+        tarifHT = 5.57;
+        typeApplique = 'Écran 15-32"';
+      } else if (taille < 45) {
+        tarifHT = 13.88;
+        typeApplique = 'Écran 33-44"';
+      } else if (taille < 55) {
+        tarifHT = 18.50;
+        typeApplique = 'Écran 45-54"';
+      } else if (taille < 70) {
+        tarifHT = 27.75;
+        typeApplique = 'Écran 55-69"';
+      } else if (taille < 90) {
+        tarifHT = 37.00;
+        typeApplique = 'Écran 70-89"';
+      } else {
+        tarifHT = 46.25;
+        typeApplique = 'Écran ≥ 90"';
+      }
+    }
+    // Imprimantes
+    else if (categorie === 'imprimante') {
+      tarifHT = 2.31;
+      typeApplique = 'Imprimante/Scanner';
+    }
+    // Consoles
+    else if (categorie === 'console' || categorie === 'console_jeux') {
+      tarifHT = 2.31;
+      typeApplique = 'Console de jeux';
+    }
+    // Enceintes et casques
+    // Enceintes et haut-parleurs (selon poids/type)
+    else if (categorie === 'enceinte') {
+      const poids = poids_kg || 1;
+      if (poids >= 1.5) {
+        tarifHT = 2.31;
+        typeApplique = 'Haut-parleur / Subwoofer';
+      } else {
+        tarifHT = 0.46;
+        typeApplique = 'Enceinte portable/voyage';
+      }
+    }
+    // Casques audio
+    else if (categorie === 'casque' || categorie === 'casque_ecouteur') {
+      tarifHT = 0.46;
+      typeApplique = 'Casque audio';
+    }
+    // Appareils photo
+    else if (categorie === 'appareil_photo' || categorie === 'camera') {
+      tarifHT = 0.46;
+      typeApplique = 'Appareil photo';
+    }
+    // Autoradio
+    else if (categorie === 'autoradio') {
+      tarifHT = 2.31;
+      typeApplique = 'Autoradio/Système audio';
+    }
+    // Instruments de musique
+    else if (categorie === 'instrument_musique') {
+      const poids = poids_kg || 2;
+      if (poids < 3) {
+        tarifHT = 2.31;
+        typeApplique = 'Instrument de musique < 3kg';
+      } else {
+        tarifHT = 5.57;
+        typeApplique = 'Instrument de musique ≥ 3kg';
+      }
+    }
+  }
+  
+  // INOBAT - Batteries
+  else if (organisme_tar === 'innobat') {
+    const poids = poids_kg || 0.25;
+    
+    if (categorie === 'pile') {
+      // Piles standards
+      tarifHT = 0.05;
+      typeApplique = 'Pile standard';
+    } else if (categorie === 'batterie') {
+      // Batteries rechargeables par poids
+      if (poids < 0.25) {
+        tarifHT = 0.25;
+        typeApplique = 'Batterie < 250g';
+      } else if (poids < 0.75) {
+        tarifHT = 0.80;
+        typeApplique = 'Batterie 250-750g';
+      } else if (poids < 5) {
+        tarifHT = 1.60;
+        typeApplique = 'Batterie 750g-5kg';
+      } else {
+        tarifHT = 9.60;
+        typeApplique = 'Batterie 5-15kg';
+      }
+    }
+  }
+  
+  // SENS - Électroménager
+  else if (organisme_tar === 'sens') {
+    const poids = poids_kg || 1;
+    
+    if (categorie === 'refrigeration') {
+      // Réfrigération
+      const tranches = SENS_DATA.categories['200_Refrigeration'].tranches;
+      const tranche = tranches.find(t => poids >= t.poidsMin && poids < t.poidsMax);
+      if (tranche) {
+        tarifHT = tranche.tarifHT;
+        typeApplique = `Réfrigération ${tranche.poidsMin}-${tranche.poidsMax}kg`;
+      }
+    } else {
+      // Électroménager général
+      const tranches = SENS_DATA.categories['100_SENS_General'].tranches;
+      const tranche = tranches.find(t => poids >= t.poidsMin && poids < t.poidsMax);
+      if (tranche) {
+        tarifHT = tranche.tarifHT;
+        typeApplique = `Électroménager ${tranche.poidsMin}-${tranche.poidsMax}kg`;
+      }
+    }
+  }
+
+  return {
+    tarifHT: tarifHT.toFixed(2),
+    typeApplique
+  };
+}
+
+// Route principale de calcul TAR
+app.post('/api/calculate-tar', async (req, res) => {
+  try {
+    const { ean, description, marque, poids, refFournisseur } = req.body;
+
+    console.log('📥 Requête:', { ean, description, marque, poids });
+
+    // Validation
+    if (!ean && !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez fournir au moins un code EAN ou une description'
+      });
+    }
+
+    // Enrichissement via OpenAI
+    const productData = await enrichProductData(
+      ean,
+      description,
+      marque,
+      poids,
+      refFournisseur
+    );
+
+    console.log('✅ Produit identifié:', productData.nom_produit);
+
+    // Méthode de recherche
+    const searchMethod = ean && description ? '🎯 EAN + Description' :
+                        ean ? '🎯 EAN' :
+                        '🔍 Description';
+
+    // Calcul de la TAR
+    const { tarifHT, typeApplique, nonSoumis } = calculateTAR(productData);
+
+    // Si produit non soumis
+    if (nonSoumis) {
+      return res.json({
+        success: true,
+        product: {
+          nom: productData.nom_produit,
+          marque: productData.marque,
+          poids: productData.poids_kg,
+          taille: productData.taille_pouces
+        },
+        tar: {
+          organisme: 'AUCUN',
+          type: 'Non soumis à la TAR',
+          tarifHT: '0.00',
+          tarifTTC: '0.00',
+          tva: 0,
+          raisonTVA: 'Produit non soumis à la taxe anticipée de recyclage'
+        },
+        nonSoumis: true,
+        confidence: productData.confiance,
+        searchMethod
+      });
+    }
+
+    // Calcul TVA
+    const tvaRate = productData.type_tva_suisse === 'normal' ? TVA_RATES.NORMAL :
+                   productData.type_tva_suisse === 'reduit' ? TVA_RATES.REDUIT :
+                   productData.type_tva_suisse === 'special' ? TVA_RATES.SPECIAL :
+                   TVA_RATES.ZERO;
+
+    const tarifTTC = (parseFloat(tarifHT) * (1 + tvaRate / 100)).toFixed(2);
+
+    // Réponse
+    res.json({
+      success: true,
+      product: {
+        nom: productData.nom_produit,
+        marque: productData.marque,
+        poids: productData.poids_kg,
+        taille: productData.taille_pouces
+      },
+      tar: {
+        organisme: productData.organisme_tar.toUpperCase(),
+        type: typeApplique,
+        tarifHT,
+        tarifTTC,
+        tva: tvaRate,
+        raisonTVA: productData.raison_tva
+      },
+      confidence: productData.confiance,
+      searchMethod
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Erreur lors du calcul'
+    });
+  }
+});
+
+// Health check
+
+// ===================================
+// 🚀 ENDPOINT V2 - Extraction enrichie
+// ===================================
+app.post('/api/calculate-tar-v2', async (req, res) => {
+  try {
+    const { ean, description } = req.body;
+    
+    if (!ean && !description) {
+      return res.status(400).json({ 
+        error: 'EAN ou description requis' 
+      });
+    }
+    
+    console.log('\n🔍 === NOUVELLE RECHERCHE V2 (ENRICHIE) ===');
+    console.log(`📦 EAN: ${ean || 'non fourni'}`);
+    console.log(`📝 Description: ${description || 'non fournie'}`);
+    
+    // ETAPE 0: Verifier le cache catalog en priorite
+    let enrichedData = null;
+    if (ean) {
+      enrichedData = await getCatalogProduct(ean);
+      if (enrichedData) {
+        console.log(`✅ CACHE HIT! Produit: ${enrichedData.product_name}`);
+        
+        // Retourner directement les donnees cached
+        const tvaRate = 8.1;
+        const tarifTTC = (parseFloat(enrichedData.tar_rate_ht) * (1 + tvaRate / 100)).toFixed(2);
+        
+        return res.json({
+          success: true,
+          source: 'cache_enriched',
+          product: {
+            nom_produit: enrichedData.product_name,
+            marque: enrichedData.brand,
+            poids_kg: enrichedData.product_weight_kg,
+            image_url: enrichedData.main_image_url,
+            description: enrichedData.short_description
+          },
+          tar: {
+            organisme: enrichedData.tar_organism,
+            type: enrichedData.tar_category,
+            tarifHT: enrichedData.tar_rate_ht,
+            tarifTTC: tarifTTC,
+            tva: tvaRate
+          },
+          enriched_data: enrichedData
+        });
+      }
+    }
+    
+    // ETAPE 1: Recherche Google via SerpAPI
+    let googleResultsText = '';
+    let googleUrls = [];
+    
+    if (ean && process.env.SERPAPI_KEY) {
+      console.log(`🌐 Recherche Google pour EAN ${ean}...`);
+      
+      const googleResults = await searchProductByEAN(ean);
+      
+      if (googleResults && googleResults.results) {
+        googleResultsText = googleResults.results;
+        googleUrls = googleResults.urls || [];
+        console.log(`✅ Google: ${googleUrls.length} sources trouvées`);
+      }
+    }
+    
+    // ETAPE 2: Extraction COMPLETE avec enriched-extractor
+    if (!googleResultsText) {
+      return res.status(400).json({
+        error: 'Aucun résultat Google trouvé pour cet EAN'
+      });
+    }
+    
+    console.log(`🔬 Extraction COMPLETE des données produit...`);
+    
+    enrichedData = await extractCompleteProductData(
+      ean,
+      googleResultsText,
+      googleUrls
+    );
+    
+    if (!enrichedData) {
+      return res.status(500).json({
+        error: 'Echec extraction enrichie'
+      });
+    }
+    
+    console.log(`✅ Extraction réussie: ${enrichedData.product_name}`);
+    console.log(`   - Poids: ${enrichedData.product_weight_kg} kg`);
+    console.log(`   - Dimensions: ${enrichedData.product_length_cm}x${enrichedData.product_width_cm}x${enrichedData.product_height_cm} cm`);
+    
+    // ETAPE 3: Categorisation TAR
+    console.log(`🤖 Categorisation TAR...`);
+    
+    const categPrompt = `Analyse ce produit et determine sa categorie TAR suisse:
+
+Produit: ${enrichedData.product_name}
+Marque: ${enrichedData.brand}
+Type: ${enrichedData.product_type}
+Description: ${enrichedData.short_description}
+Poids: ${enrichedData.product_weight_kg} kg
+
+Categorie TAR: [determine parmi: smartphone, tablette, ordinateur_portable, ordinateur_fixe, ecran, imprimante, enceinte, casque_ecouteur, console_jeux, clavier_souris, camera, drone, disque_dur, autre_electronique]
+Organisme: [SWICO, SENS, ou INOBAT]
+
+Retourne JSON: {categorie: ..., organisme: ...}`;
+
+    const categResult = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: categPrompt }],
+      temperature: 0.3,
+      response_format: { type: "json_object" }
+    });
+    
+    const categData = JSON.parse(categResult.choices[0].message.content);
+    console.log(`✅ Catégorie: ${categData.categorie} / ${categData.organisme}`);
+    
+    // ETAPE 4: Calcul TAR
+    const { tarifHT, typeApplique } = calculateTAR({
+      organisme_tar: categData.organisme.toLowerCase(),
+      categorie: categData.categorie,
+      poids_kg: enrichedData.product_weight_kg,
+      nom_produit: enrichedData.product_name
+    });
+    
+    // Calcul TVA (TVA normale 8.1% pour la TAR)
+    const tvaRate = 8.1;
+    const tarifTTC = (parseFloat(tarifHT) * (1 + tvaRate / 100)).toFixed(2);
+    
+    console.log(`💰 TAR calculé: CHF ${tarifHT} HT / CHF ${tarifTTC} TTC`);
+    
+    // ETAPE 5: Sauvegarder en base enrichie
+    const productToSave = {
+      ean: ean,
+      product_name: enrichedData.product_name,
+      brand: enrichedData.brand,
+      manufacturer: enrichedData.manufacturer,
+      model_number: enrichedData.model_number,
+      
+      short_description: enrichedData.short_description,
+      long_description: enrichedData.long_description,
+      key_features: enrichedData.key_features,
+      technical_specs: enrichedData.technical_specs,
+      
+      product_length_cm: enrichedData.product_length_cm,
+      product_width_cm: enrichedData.product_width_cm,
+      product_height_cm: enrichedData.product_height_cm,
+      product_weight_kg: enrichedData.product_weight_kg,
+      
+      package_weight_kg: enrichedData.package_weight_kg,
+      package_length_cm: enrichedData.package_length_cm,
+      package_width_cm: enrichedData.package_width_cm,
+      package_height_cm: enrichedData.package_height_cm,
+      
+      color: enrichedData.color,
+      main_category: enrichedData.main_category,
+      sub_category: enrichedData.sub_category,
+      product_type: enrichedData.product_type,
+      
+      tar_category: categData.categorie,
+      tar_organism: categData.organisme.toLowerCase(),
+      tar_rate_ht: parseFloat(tarifHT),
+      tar_rate_ttc: parseFloat(tarifTTC),
+      vat_rate: tvaRate,
+      
+      msrp_chf: enrichedData.msrp_chf,
+      msrp_eur: enrichedData.msrp_eur,
+      msrp_usd: enrichedData.msrp_usd,
+      
+      main_image_url: enrichedData.main_image_url,
+      images_urls: enrichedData.images_urls,
+      
+      source_urls: googleUrls,
+      country_of_origin: enrichedData.country_of_origin,
+      
+      certifications: enrichedData.certifications,
+      energy_label: enrichedData.energy_label,
+      warranty_months: enrichedData.warranty_months,
+      
+      data_source: 'serpapi',
+      confidence_score: enrichedData.confidence || 80
+    };
+    
+    const saved = await saveEnrichedProduct(productToSave);
+    
+    if (saved) {
+      console.log(`✅ Produit sauvegardé dans products_catalog`);
+    }
+    
+    // REPONSE
+    res.json({
+      success: true,
+      source: 'enriched_extraction',
+      product: {
+        nom_produit: enrichedData.product_name,
+        marque: enrichedData.brand,
+        poids_kg: enrichedData.product_weight_kg,
+        image_url: enrichedData.main_image_url,
+        description: enrichedData.short_description,
+        dimensions: {
+          length_cm: enrichedData.product_length_cm,
+          width_cm: enrichedData.product_width_cm,
+          height_cm: enrichedData.product_height_cm
+        }
+      },
+      tar: {
+        organisme: categData.organisme,
+        type: typeApplique,
+        tarifHT: tarifHT,
+        tarifTTC: tarifTTC,
+        tva: tvaRate
+      },
+      enriched_data: enrichedData
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur endpoint v2:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur',
+      message: error.message 
+    });
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    baremes: {
+      swico: 'Complet 2026',
+      sens: 'Complet 2026',
+      inobat: 'Complet 2026'
+    }
+  });
+});
+
+// Route racine
+app.get('/', (req, res) => {
+  res.json({
+    service: 'TAR Calculator API',
+    version: '2.0.0',
+    endpoints: {
+      calculate: 'POST /api/calculate-tar',
+      health: 'GET /health'
+    }
+  });
+});
+
+// Démarrage
+app.listen(PORT, () => {
+  console.log(`✅ Serveur TAR Calculator v2.0 démarré sur le port ${PORT}`);
+  console.log(`🌐 Health check: http://localhost:${PORT}/health`);
+  console.log(`🤖 OpenAI: ${openai.apiKey ? 'Configuré' : 'NON configuré'}`);
+});

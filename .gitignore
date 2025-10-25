@@ -1,0 +1,50 @@
+# Dependencies
+**/node_modules/
+**/package-lock.json
+
+# Next.js
+**/.next/
+**/out/
+**/.vercel/
+
+# Build
+**/dist/
+**/build/
+
+# Environment Variables - IMPORTANT: Never commit real API keys!
+**/.env
+**/.env.local
+**/.env.*.local
+deployment/.env.odl
+**/SUPABASE_SERVICE_ROLE_KEY.txt
+
+# Logs
+**/logs/
+**/*.log
+**/npm-debug.log*
+
+# OS
+**/.DS_Store
+**/Thumbs.db
+
+# IDE
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+
+# Supabase Local
+**/supabase/.branches/
+**/supabase/.temp/
+
+# Backups
+**/*.backup
+**/*.tar.gz
+**/*.zip
+
+# Test files
+**/test-*.json
+**/test-*.sh
+
+# TypeScript
+**/*.tsbuildinfo

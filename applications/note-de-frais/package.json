@@ -1,0 +1,16 @@
+{
+  "name": "note-de-frais-api",
+  "version": "1.0.0",
+  "description": "API d'analyse de factures avec Claude",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2"
+  }
+}

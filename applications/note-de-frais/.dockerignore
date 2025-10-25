@@ -1,0 +1,10 @@
+# Misc
+.DS_Store
+*.pem
+
+# IDE
+.vscode
+.idea
+
+# Documentation
+*.md

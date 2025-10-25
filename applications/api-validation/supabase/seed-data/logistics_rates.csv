@@ -1,0 +1,7 @@
+provider_id,format_label,carrier,mode,length_cm,width_cm,height_cm,weight_max_kg,price_transport,price_reception,price_prep,is_default,is_active
+ohmex,"60x60x100 cm - Sans signature","Planzer","Sans signature",60,60,100,,8.50,0.50,2.50,true,true
+ohmex,"60x60x100 cm - Avec signature","Planzer","Avec signature",60,60,100,,9.50,0.50,2.50,false,true
+ohmex,"B5 - 2 cm - Sans signature","La Poste","Sans signature",25,17.6,2,0.5,3.00,0.50,2.50,false,true
+ohmex,"B5 - 2 cm - Avec suivi","La Poste","Avec suivi",25,17.6,2,0.5,4.50,0.50,2.50,false,true
+ohmex,"B5 - 5 cm - Sans signature","La Poste","Sans signature",25,17.6,5,0.5,5.00,0.50,2.50,false,true
+ohmex,"B5 - 5 cm - Avec suivi","La Poste","Avec suivi",25,17.6,5,0.5,6.50,0.50,2.50,false,true
