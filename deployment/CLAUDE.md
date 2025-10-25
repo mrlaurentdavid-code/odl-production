@@ -389,3 +389,9 @@ curl -I https://ndf.odl-tools.ch
 - **Traefik Dashboard**: https://traefik.odl-tools.ch (si configuré)
 - **GitHub**: https://github.com/mrlaurentdavid-code/odl-production
 - **Supabase**: https://supabase.com/dashboard/project/xewnzetqvrovqjcvwkus
+
+## 📅 Recent Changes
+
+- 2025-10-25 17:00: Documentation du workflow "GIT AND CLAUDE" pour continuité des sessions
+- 2025-10-25 14:30: Synchronisation complète du serveur vers GitHub repository
+- 2025-10-25 14:00: Fix Dockerfile.api - suppression de la copie du dossier public/ inexistant

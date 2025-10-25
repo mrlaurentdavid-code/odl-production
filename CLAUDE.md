@@ -63,6 +63,11 @@ Fichiers avec placeholders (à renseigner sur le serveur):
 
 Chaque sous-dossier contient son propre `CLAUDE.md` avec des informations détaillées :
 
+- **.claude/** - Workflow et continuité des sessions Claude Code
+  - `WORKFLOW.md` - Règles du workflow "GIT AND CLAUDE"
+  - `QUICK_START.md` - À lire en premier à chaque session
+  - `SESSION_HISTORY.md` - Historique chronologique des sessions
+
 - **applications/** - Applications complètes avec leur code source
   - `odl-tools/` - Dashboard principal avec SSO et calculateurs
   - `api-validation/` - API de validation des offres fournisseurs
@@ -152,7 +157,27 @@ Ce fichier et ceux dans les sous-dossiers sont spécifiquement créés pour faci
 - Les dépendances importantes
 
 **Workflow recommandé pour Claude Code**:
-1. Lire ce CLAUDE.md pour comprendre l'architecture globale
-2. Lire le CLAUDE.md du dossier spécifique où vous travaillez
-3. Consulter le README.md pour les détails techniques
-4. Vérifier les migrations Supabase avant toute modification de schéma
+1. **Démarrer une session**: Lire `.claude/QUICK_START.md` en premier
+2. Lire ce CLAUDE.md pour comprendre l'architecture globale
+3. Lire le CLAUDE.md du dossier spécifique où vous travaillez
+4. Consulter le README.md pour les détails techniques
+5. Vérifier les migrations Supabase avant toute modification de schéma
+6. **Terminer une session**: Utiliser la commande "GIT AND CLAUDE"
+
+### 💾 Commande "GIT AND CLAUDE"
+
+Quand l'utilisateur dit **"GIT AND CLAUDE"**, exécuter le workflow complet :
+- Mettre à jour tous les CLAUDE.md modifiés avec section "Recent Changes"
+- Mettre à jour SESSION_HISTORY.md et QUICK_START.md
+- Commit et push vers GitHub
+- Générer un résumé de session
+
+**Voir `.claude/WORKFLOW.md` pour les détails complets du workflow.**
+
+## 📅 Recent Changes
+
+- 2025-10-25 17:00: Création du système de workflow "GIT AND CLAUDE" (.claude/ folder)
+- 2025-10-25 16:30: Ajout du guide d'intégration WeWeb complet (WEWEB_INTEGRATION_GUIDE.md)
+- 2025-10-25 15:30: Création de 8 fichiers CLAUDE.md pour documentation complète
+- 2025-10-25 14:30: Création du repository GitHub avec tout le code de production
+- 2025-10-25 14:00: Ajout de la documentation API Validation au dashboard
