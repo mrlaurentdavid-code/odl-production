@@ -34,36 +34,105 @@ Avantages:
 
 **Authentication**: Header `X-API-Key`
 
-**Input**:
+**📘 Documentation Complète**: Voir `API_SPECIFICATION.md` pour tous les détails
+
+**Input (Complet)** :
 ```json
 {
+  "offer_id": "1f218950-3789-4176-a883-958c593a84af",
   "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
-  "item_name": "Laptop Dell XPS 15",
-  "supplier_price_chf": 1200.00,
+  "item_id": "888413779764",
+  "ean": "0888413779764",
+  "product_name": "Apple iPhone 15 Pro 256GB",
+  "category_name": "Electronics",
+  "subcategory_name": "Smartphones",
+  "msrp": 1299.00,
+  "street_price": 1199.00,
+  "promo_price": 999.00,
+  "purchase_price_ht": 750.00,
+  "purchase_currency": "EUR",
   "quantity": 10,
-  "category": "Electronics"
+  "package_weight_kg": 0.8,
+  "pesa_fee_ht": 2.50,
+  "warranty_cost_ht": 0
 }
 ```
 
-**Output**:
+**Input (Minimal)** :
+```json
+{
+  "offer_id": "1f218950-3789-4176-a883-958c593a84af",
+  "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
+  "item_id": "888413779764",
+  "msrp": 300.00,
+  "street_price": 250.00,
+  "promo_price": 200.00,
+  "purchase_price_ht": 120.00
+}
+```
+
+**Output** :
 ```json
 {
   "success": true,
-  "data": {
-    "is_valid": true,
-    "deal_status": "top",
-    "margin_percentage": 42.5,
-    "savings_percentage": 18.2,
-    "cogs_total_chf": 1350.75,
-    "breakdown": {
-      "supplier_cost": 12000.00,
-      "transport_cost": 450.00,
-      "customs_duty": 444.00,
-      "logistics_cost": 156.75
-    }
+  "is_valid": true,
+  "deal_status": "good",
+  "cost_id": "d3e6a22b-efad-4f0c-864a-96a5bcc0e9ac",
+  "validation_issues": [],
+  "item_details": {
+    "item_id": "888413779764",
+    "ean": "0888413779764",
+    "product_name": "Apple iPhone 15 Pro 256GB"
+  },
+  "pricing": {
+    "msrp": 1299.00,
+    "street_price": 1199.00,
+    "promo_price": 999.00,
+    "purchase_price_original": 750.00,
+    "purchase_currency": "EUR",
+    "currency_rate": 0.95
+  },
+  "applied_rule": {
+    "rule_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "rule_name": "Electronics - Smartphones Rules",
+    "scope": "subcategory",
+    "category": "Electronics",
+    "subcategory": "Smartphones"
   }
 }
 ```
+
+**⚠️ Données Sensibles Retirées** (depuis 2025-10-26):
+- ❌ `costs_breakdown` (logistics_ht, customs_duty_ht, etc.)
+- ❌ `deal_thresholds` (seuils min/max marges O!Deal)
+
+### Champs Requis
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `offer_id` | UUID | Identifiant unique de l'offre |
+| `supplier_id` | UUID | Identifiant du fournisseur |
+| `item_id` | TEXT | Code produit (EAN/SKU/référence) |
+| `msrp` | NUMERIC | Prix de vente conseillé en CHF TTC |
+| `street_price` | NUMERIC | Prix marché actuel en CHF TTC |
+| `promo_price` | NUMERIC | Prix promo proposé en CHF TTC |
+| `purchase_price_ht` | NUMERIC | Prix d'achat HT (devise d'origine) |
+
+### Champs Optionnels Importants
+
+| Champ | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `category_name` | TEXT | `null` | **Important pour calcul douanes et règles métier** |
+| `subcategory_name` | TEXT | `null` | **Important pour règles métier hiérarchiques** |
+| `purchase_currency` | TEXT | `"CHF"` | Devise du prix d'achat (EUR, USD, CHF...) |
+| `quantity` | INT | `1` | Quantité proposée |
+| `product_name` | TEXT | `null` | Nom du produit |
+| `ean` | TEXT | `item_id` | Code EAN si différent de item_id |
+| `package_weight_kg` | NUMERIC | `0.5` | Poids du colis |
+| `pesa_fee_ht` | NUMERIC | `0` | Frais PESA HT |
+| `warranty_cost_ht` | NUMERIC | `0` | Coût garantie HT |
+
+**⚠️ Note**: Pour bénéficier de règles métier spécifiques et calculs de douanes corrects, il est **fortement recommandé** de fournir `category_name` et `subcategory_name`.
 
 ## 🗂️ Structure
 
