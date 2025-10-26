@@ -1,19 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================================================
 // Configuration Supabase
 // ============================================================================
 
-const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
-const supabaseUrl = isLocalDev
-  ? 'http://127.0.0.1:54331'
-  : process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = isLocalDev
-  ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
-  : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Lazy initialization of Supabase client to avoid build-time errors
+let supabaseClient: SupabaseClient | null = null
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
+    const supabaseUrl = isLocalDev
+      ? 'http://127.0.0.1:54331'
+      : process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = isLocalDev
+      ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    supabaseClient = createClient(supabaseUrl, supabaseKey)
+  }
+  return supabaseClient
+}
 
 // ============================================================================
 // Types
@@ -22,7 +31,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 interface ValidateItemRequest {
   // Required fields
   offer_id: string
-  item_id: string
+  item_id: string | null  // Can be null, will be auto-generated
   msrp: number
   street_price: number
   promo_price: number
@@ -33,7 +42,8 @@ interface ValidateItemRequest {
   ean?: string
   product_name?: string
   package_weight_kg?: number
-  subcategory_id?: string
+  category_id?: string  // NEW: Category ID from WeWeb
+  subcategory_id?: string  // NEW: Subcategory ID from WeWeb
   quantity?: number
   pesa_fee_ht?: number
   warranty_cost_ht?: number
@@ -54,6 +64,7 @@ interface ApiKeyVerificationResult {
  * Verify API Key and return supplier_id
  */
 async function verifyApiKey(apiKey: string): Promise<ApiKeyVerificationResult> {
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase.rpc('verify_supplier_api_key', {
     p_api_key: apiKey
   })
@@ -187,17 +198,16 @@ export async function POST(request: Request) {
 
     const body: ValidateItemRequest = await request.json()
 
-    // Required fields
+    // Required fields (item_id can be null, will be auto-generated)
     const requiredFields = [
       'offer_id',
-      'item_id',
       'msrp',
       'street_price',
       'promo_price',
       'purchase_price_ht'
     ]
 
-    const missingFields = requiredFields.filter(field => !(field in body))
+    const missingFields = requiredFields.filter(field => !(field in body) || (body as any)[field] === undefined)
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -239,7 +249,7 @@ export async function POST(request: Request) {
 
     const itemData = {
       offer_id: body.offer_id,
-      item_id: body.item_id,
+      item_id: body.item_id || null,  // Can be null
       msrp: body.msrp,
       street_price: body.street_price,
       promo_price: body.promo_price,
@@ -248,6 +258,7 @@ export async function POST(request: Request) {
       ean: body.ean || null,
       product_name: body.product_name || null,
       package_weight_kg: body.package_weight_kg || null,
+      category_id: body.category_id || null,  // NEW
       subcategory_id: body.subcategory_id || null,
       quantity: body.quantity || 1,
       pesa_fee_ht: body.pesa_fee_ht || 0,
@@ -258,6 +269,7 @@ export async function POST(request: Request) {
     // STEP 4: CALL VALIDATION FUNCTION
     // ============================================================================
 
+    const supabase = getSupabaseClient()
     const { data, error } = await supabase.rpc('validate_and_calculate_item', {
       p_supplier_id: verification.supplier_id,
       p_user_id: null, // User tracking will be added in Phase 3

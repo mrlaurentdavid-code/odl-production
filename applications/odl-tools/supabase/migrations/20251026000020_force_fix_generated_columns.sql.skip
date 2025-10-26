@@ -1,0 +1,38 @@
+-- Migration: Force fix GENERATED column constraints
+-- Date: 2025-10-26
+-- Purpose: Ensure marge_brute_ht and related columns are NOT GENERATED
+
+-- Drop all potentially GENERATED columns with CASCADE to remove all dependencies
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS marge_brute_ht CASCADE;
+
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS marge_brute_percent CASCADE;
+
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS purchase_price_chf_ht CASCADE;
+
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS cogs_ht CASCADE;
+
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS cogs_total_ht CASCADE;
+
+-- Now recreate them as regular NUMERIC columns (NOT GENERATED)
+ALTER TABLE offer_item_calculated_costs
+  ADD COLUMN marge_brute_ht NUMERIC;
+
+ALTER TABLE offer_item_calculated_costs
+  ADD COLUMN marge_brute_percent NUMERIC;
+
+ALTER TABLE offer_item_calculated_costs
+  ADD COLUMN purchase_price_chf_ht NUMERIC;
+
+ALTER TABLE offer_item_calculated_costs
+  ADD COLUMN cogs_ht NUMERIC;
+
+-- Add comments to clarify these are calculated BY THE FUNCTION, not by database
+COMMENT ON COLUMN offer_item_calculated_costs.marge_brute_ht IS 'Gross margin in CHF HT - calculated by validation function';
+COMMENT ON COLUMN offer_item_calculated_costs.marge_brute_percent IS 'Gross margin percentage - calculated by validation function';
+COMMENT ON COLUMN offer_item_calculated_costs.purchase_price_chf_ht IS 'Purchase price converted to CHF HT with safety coefficient - calculated by validation function';
+COMMENT ON COLUMN offer_item_calculated_costs.cogs_ht IS 'Total Cost of Goods Sold in CHF HT - calculated by validation function';

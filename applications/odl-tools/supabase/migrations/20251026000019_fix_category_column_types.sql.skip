@@ -1,0 +1,37 @@
+-- Migration: Fix category/subcategory column types from UUID to TEXT
+-- Date: 2025-10-26
+-- Purpose: Original schema used UUID but we use string IDs like "c1", "s5"
+
+-- Change subcategory_id from UUID to TEXT
+ALTER TABLE offer_item_calculated_costs
+  ALTER COLUMN subcategory_id TYPE TEXT USING subcategory_id::TEXT;
+
+-- Handle category_id (may or may not exist, may be wrong type)
+DO $$
+BEGIN
+  -- Check if category_id column exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'offer_item_calculated_costs'
+    AND column_name = 'category_id'
+  ) THEN
+    -- Column exists, check if it needs type change
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'offer_item_calculated_costs'
+      AND column_name = 'category_id'
+      AND data_type != 'text'
+    ) THEN
+      -- Change type to TEXT
+      ALTER TABLE offer_item_calculated_costs
+        ALTER COLUMN category_id TYPE TEXT USING category_id::TEXT;
+    END IF;
+  ELSE
+    -- Column doesn't exist, add it
+    ALTER TABLE offer_item_calculated_costs
+      ADD COLUMN category_id TEXT;
+  END IF;
+END $$;
+
+COMMENT ON COLUMN offer_item_calculated_costs.category_id IS 'Category ID as string (e.g., "c1", "c2") for multilingual support';
+COMMENT ON COLUMN offer_item_calculated_costs.subcategory_id IS 'Subcategory ID as string (e.g., "s1", "s5") for multilingual support';

@@ -24,8 +24,7 @@ X-API-Key: YOUR_API_KEY
 | Champ | Type | Description | Exemple |
 |-------|------|-------------|---------|
 | `offer_id` | UUID | Identifiant unique de l'offre | `"1f218950-3789-4176-a883-958c593a84af"` |
-| `supplier_id` | UUID | Identifiant du fournisseur | `"334773ca-22ab-43bb-834f-eb50aa1d01f8"` |
-| `item_id` | TEXT | Code produit (EAN/SKU/référence) | `"888413779764"` |
+| `item_id` | TEXT ou NULL | Code produit (EAN/SKU/référence) - **Peut être NULL**, sera auto-généré | `"888413779764"` ou `null` |
 | `msrp` | NUMERIC | Prix de vente conseillé (MSRP) en CHF TTC | `300.00` |
 | `street_price` | NUMERIC | Prix marché actuel en CHF TTC | `250.00` |
 | `promo_price` | NUMERIC | Prix promo proposé en CHF TTC | `200.00` |
@@ -35,12 +34,16 @@ X-API-Key: YOUR_API_KEY
 
 | Champ | Type | Défaut | Description | Exemple |
 |-------|------|--------|-------------|---------|
-| `category_name` | TEXT | `null` | Catégorie produit (pour calcul douanes et règles métier) | `"Electronics"`, `"Computers"` |
-| `subcategory_name` | TEXT | `null` | Sous-catégorie (pour règles métier spécifiques) | `"Laptops"`, `"Smartphones"` |
+| `category_id` | TEXT | `null` | **Recommandé** ID catégorie (multilingue) - utilisé pour règles métier | `"c1"`, `"c2"` |
+| `subcategory_id` | TEXT | `null` | **Recommandé** ID sous-catégorie (multilingue) - utilisé pour règles métier et douanes | `"s1"`, `"s5"` |
+| `category_name` | TEXT | `null` | Nom catégorie (fallback si category_id non fourni) | `"Electronics"`, `"Computers"` |
+| `subcategory_name` | TEXT | `null` | Nom sous-catégorie (fallback si subcategory_id non fourni) | `"Laptops"`, `"Smartphones"` |
 | `purchase_currency` | TEXT | `"CHF"` | Devise du prix d'achat | `"EUR"`, `"USD"`, `"CHF"` |
 | `quantity` | INTEGER | `1` | Quantité proposée | `10` |
 | `product_name` | TEXT | `null` | Nom du produit | `"iPhone 15 Pro 256GB"` |
 | `ean` | TEXT | `item_id` | Code EAN si différent de item_id | `"0888462157490"` |
+
+> **Note**: L'API accepte SOIT les IDs (category_id/subcategory_id) SOIT les noms (category_name/subcategory_name). Les IDs sont **recommandés** pour une architecture multilingue.
 
 #### Champs Optionnels Avancés
 
@@ -50,7 +53,7 @@ X-API-Key: YOUR_API_KEY
 | `pesa_fee_ht` | NUMERIC | `0` | Frais PESA HT si applicable | `2.50` |
 | `warranty_cost_ht` | NUMERIC | `0` | Coût garantie HT si applicable | `15.00` |
 
-### Exemple de Requête Complète
+### Exemple de Requête Complète (avec IDs - Recommandé)
 
 ```bash
 curl -X POST https://api.odl-tools.ch/api/validate-item \
@@ -58,10 +61,32 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
   -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "offer_id": "1f218950-3789-4176-a883-958c593a84af",
-    "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
-    "item_id": "888413779764",
-    "ean": "0888413779764",
+    "item_id": null,
+    "category_id": "c1",
+    "subcategory_id": "s1",
+    "msrp": 1299.00,
+    "street_price": 1199.00,
+    "promo_price": 999.00,
+    "purchase_price_ht": 750.00,
+    "purchase_currency": "EUR",
+    "quantity": 10,
+    "package_weight_kg": 0.8,
     "product_name": "Apple iPhone 15 Pro 256GB",
+    "ean": "0888413779764",
+    "pesa_fee_ht": 2.50,
+    "warranty_cost_ht": 0
+  }'
+```
+
+### Exemple avec Noms (Legacy - Toujours supporté)
+
+```bash
+curl -X POST https://api.odl-tools.ch/api/validate-item \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{
+    "offer_id": "1f218950-3789-4176-a883-958c593a84af",
+    "item_id": "888413779764",
     "category_name": "Electronics",
     "subcategory_name": "Smartphones",
     "msrp": 1299.00,
@@ -71,6 +96,8 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
     "purchase_currency": "EUR",
     "quantity": 10,
     "package_weight_kg": 0.8,
+    "product_name": "Apple iPhone 15 Pro 256GB",
+    "ean": "0888413779764",
     "pesa_fee_ht": 2.50,
     "warranty_cost_ht": 0
   }'
@@ -84,14 +111,15 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
   -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "offer_id": "1f218950-3789-4176-a883-958c593a84af",
-    "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
-    "item_id": "888413779764",
+    "item_id": null,
     "msrp": 300.00,
     "street_price": 250.00,
     "promo_price": 200.00,
     "purchase_price_ht": 120.00
   }'
 ```
+
+> **Note**: Avec `item_id: null`, l'API génère automatiquement un UUID unique retourné dans `generated_item_id`.
 
 ## Response
 
@@ -103,9 +131,10 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
   "is_valid": true,
   "deal_status": "good",
   "cost_id": "d3e6a22b-efad-4f0c-864a-96a5bcc0e9ac",
+  "generated_item_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "validation_issues": [],
   "item_details": {
-    "item_id": "888413779764",
+    "item_id": null,
     "ean": "0888413779764",
     "product_name": "Apple iPhone 15 Pro 256GB"
   },
@@ -127,6 +156,8 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
 }
 ```
 
+> **Important**: Si `item_id` était `null` dans la requête, le champ `generated_item_id` contient l'UUID auto-généré. WeWeb doit stocker cette valeur pour référencer l'item par la suite.
+
 ### Response Fields
 
 | Champ | Type | Description |
@@ -135,6 +166,7 @@ curl -X POST https://api.odl-tools.ch/api/validate-item \
 | `is_valid` | BOOLEAN | `true` si deal accepté (status = top/good) |
 | `deal_status` | TEXT | `"top"`, `"good"`, `"almost"`, ou `"bad"` |
 | `cost_id` | UUID | ID du calcul de coût (référence interne) |
+| `generated_item_id` | UUID | **Nouveau** UUID auto-généré si item_id était null |
 | `validation_issues` | ARRAY | Liste des problèmes détectés |
 | `item_details` | OBJECT | Informations produit |
 | `pricing` | OBJECT | Détail des prix et conversion devise |
@@ -230,12 +262,29 @@ Pour toute question ou demande de clé API :
 
 ## Changelog
 
-### 2025-10-26
-- ✅ Retrait des données sensibles (costs_breakdown, deal_thresholds)
-- ✅ Ajout auto-calcul projections financières
-- ✅ Support category_name et subcategory_name
+### 2025-10-26 v1.1.0 - Architecture Multilingue
 
-### 2025-10-25
+#### Nouvelles Fonctionnalités
+- ✅ **item_id peut être NULL** - Auto-génération d'UUID avec retour dans `generated_item_id`
+- ✅ **Support category_id/subcategory_id** - Architecture multilingue-friendly
+- ✅ **Lookup bidirectionnel** - Accepte IDs ou noms, stocke les deux
+- ✅ **Matching par ID** - Règles métier et droits de douane utilisent les IDs
+- ✅ **Backward compatibility** - Anciens formats avec noms toujours supportés
+
+#### Modifications Base de Données
+- ✅ Migration `20251026000012` - Gestion item_id NULL
+- ✅ Migration `20251026000013` - Support category_id lookup
+- ✅ Migration `20251026000014` - Refactorisation complète vers IDs
+- ✅ Ajout colonnes `category_id`, `subcategory_id` dans `odl_rules`
+- ✅ Ajout colonnes `category_id`, `subcategory_id` dans `offer_item_calculated_costs`
+
+#### Corrections Techniques
+- ✅ Fix Docker build - Lazy initialization Supabase client
+- ✅ Fix TypeScript - Type assertion pour validation champs
+
+### 2025-10-25 v1.0.0 - Release Initiale
 - ✅ Création API validation initiale
 - ✅ Support item_id en TEXT (EAN/SKU)
 - ✅ Règles métier hiérarchiques
+- ✅ Retrait des données sensibles (costs_breakdown, deal_thresholds)
+- ✅ Auto-calcul projections financières

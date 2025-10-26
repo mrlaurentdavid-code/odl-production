@@ -1,19 +1,28 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================================================
 // Configuration Supabase
 // ============================================================================
 
-const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
-const supabaseUrl = isLocalDev
-  ? 'http://127.0.0.1:54331'
-  : process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = isLocalDev
-  ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
-  : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Lazy initialization of Supabase client to avoid build-time errors
+let supabaseClient: SupabaseClient | null = null
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
+    const supabaseUrl = isLocalDev
+      ? 'http://127.0.0.1:54331'
+      : process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = isLocalDev
+      ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    supabaseClient = createClient(supabaseUrl, supabaseKey)
+  }
+  return supabaseClient
+}
 
 // ============================================================================
 // Types
@@ -22,7 +31,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 interface ValidateItemRequest {
   // Required fields
   offer_id: string
-  item_id: string
+  item_id: string | null  // Can be null, will be auto-generated
   msrp: number
   street_price: number
   promo_price: number
@@ -33,10 +42,31 @@ interface ValidateItemRequest {
   ean?: string
   product_name?: string
   package_weight_kg?: number
+  category_id?: string
   subcategory_id?: string
+  category_name?: string  // WeWeb may send IDs in name fields
+  subcategory_name?: string  // WeWeb may send IDs in name fields
   quantity?: number
   pesa_fee_ht?: number
   warranty_cost_ht?: number
+
+  // NEW: Dimensions
+  length_cm?: number
+  width_cm?: number
+  height_cm?: number
+
+  // NEW: Shipping and customs
+  shipping_origin?: string
+
+  // NEW: Electronic/TAR
+  contain_electronic?: boolean  // If true, call TAR API
+  has_battery?: boolean         // For TAR calculation
+  battery_type?: string          // For TAR calculation
+  tar_ht?: number                // TAR calculated by TAR API
+
+  // NEW: Identifiers
+  variant_id?: string
+  user_id?: string
 }
 
 interface ApiKeyVerificationResult {
@@ -54,6 +84,7 @@ interface ApiKeyVerificationResult {
  * Verify API Key and return supplier_id
  */
 async function verifyApiKey(apiKey: string): Promise<ApiKeyVerificationResult> {
+  const supabase = getSupabaseClient()
   const { data, error } = await supabase.rpc('verify_supplier_api_key', {
     p_api_key: apiKey
   })
@@ -187,17 +218,16 @@ export async function POST(request: Request) {
 
     const body: ValidateItemRequest = await request.json()
 
-    // Required fields
+    // Required fields (item_id can be null, will be auto-generated)
     const requiredFields = [
       'offer_id',
-      'item_id',
       'msrp',
       'street_price',
       'promo_price',
       'purchase_price_ht'
     ]
 
-    const missingFields = requiredFields.filter(field => !(field in body))
+    const missingFields = requiredFields.filter(field => !(field in body) || (body as any)[field] === undefined)
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -233,13 +263,45 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validate battery fields if has_battery = true
+    if (body.has_battery === true) {
+      if (!body.battery_type || body.battery_type.trim() === '') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'battery_type is required when has_battery = true',
+            code: 'MISSING_BATTERY_TYPE'
+          },
+          {
+            status: 400,
+            headers: corsHeaders(origin)
+          }
+        )
+      }
+
+      if (!body.package_weight_kg || typeof body.package_weight_kg !== 'number' || body.package_weight_kg <= 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'package_weight_kg (weight_kg) is required and must be > 0 when has_battery = true',
+            code: 'MISSING_WEIGHT'
+          },
+          {
+            status: 400,
+            headers: corsHeaders(origin)
+          }
+        )
+      }
+    }
+
     // ============================================================================
     // STEP 3: BUILD ITEM DATA JSONB
     // ============================================================================
 
     const itemData = {
       offer_id: body.offer_id,
-      item_id: body.item_id,
+      item_id: body.item_id || null,  // Can be null
+      variant_id: body.variant_id || null,
       msrp: body.msrp,
       street_price: body.street_price,
       promo_price: body.promo_price,
@@ -248,16 +310,93 @@ export async function POST(request: Request) {
       ean: body.ean || null,
       product_name: body.product_name || null,
       package_weight_kg: body.package_weight_kg || null,
+
+      // Dimensions
+      length_cm: body.length_cm || null,
+      width_cm: body.width_cm || null,
+      height_cm: body.height_cm || null,
+
+      // Category/Subcategory (accepts both ID and name fields)
+      category_id: body.category_id || null,
       subcategory_id: body.subcategory_id || null,
+      category_name: body.category_name || null,
+      subcategory_name: body.subcategory_name || null,
+
+      // Shipping and customs
+      shipping_origin: body.shipping_origin || 'CH',
+
+      // Electronic/TAR
+      contain_electronic: body.contain_electronic || false,
+      has_battery: body.has_battery || false,
+      battery_type: body.battery_type || null,
+      tar_ht: body.tar_ht || 0,  // Will be calculated by TAR API
+
+      // Other
       quantity: body.quantity || 1,
-      pesa_fee_ht: body.pesa_fee_ht || 0,
       warranty_cost_ht: body.warranty_cost_ht || 0
     }
 
     // ============================================================================
-    // STEP 4: CALL VALIDATION FUNCTION
+    // STEP 4: CALL TAR API (if contain_electronic = true)
     // ============================================================================
 
+    let tarAmount = 0
+
+    if (itemData.contain_electronic) {
+      try {
+        // Collect ALL available data for maximum TAR calculation accuracy
+        const tarPayload = {
+          // REQUIRED fields
+          item_name: itemData.product_name || 'Unknown product',
+          subcategory_id: itemData.subcategory_id || 'unknown',
+
+          // OPTIONAL but important for accuracy
+          has_battery: itemData.has_battery || false,
+          battery_type: itemData.battery_type || null,
+          weight_kg: itemData.package_weight_kg || null,
+          length_cm: itemData.length_cm || null,
+          width_cm: itemData.width_cm || null,
+          height_cm: itemData.height_cm || null,
+          ean: itemData.ean || null,
+          sku: itemData.item_id || null
+        }
+
+        console.log('📞 Calling TAR API with:', tarPayload)
+
+        const tarResponse = await fetch('https://tar.odl-tools.ch/api/calculate-tar-odeal', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(tarPayload)
+        })
+
+        if (tarResponse.ok) {
+          const tarData = await tarResponse.json()
+          if (tarData.success && tarData.tar_ht) {
+            tarAmount = parseFloat(tarData.tar_ht)
+            console.log(`✅ TAR calculated: CHF ${tarAmount} (${tarData.organisme || 'N/A'})`)
+          } else {
+            console.warn('⚠️ TAR API returned no tariff, using 0')
+          }
+        } else {
+          const errorText = await tarResponse.text()
+          console.warn('⚠️ TAR API request failed:', tarResponse.status, errorText)
+        }
+      } catch (error) {
+        console.error('❌ Error calling TAR API:', error)
+        // Continue without TAR (will be 0)
+      }
+    }
+
+    // Add calculated TAR to itemData
+    itemData.tar_ht = tarAmount
+
+    // ============================================================================
+    // STEP 5: CALL VALIDATION FUNCTION
+    // ============================================================================
+
+    const supabase = getSupabaseClient()
     const { data, error } = await supabase.rpc('validate_and_calculate_item', {
       p_supplier_id: verification.supplier_id,
       p_user_id: null, // User tracking will be added in Phase 3
@@ -281,7 +420,7 @@ export async function POST(request: Request) {
     }
 
     // ============================================================================
-    // STEP 5: RETURN RESULT
+    // STEP 6: RETURN RESULT
     // ============================================================================
 
     // If validation function returned success=false, return 400

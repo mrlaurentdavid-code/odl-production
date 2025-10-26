@@ -44,7 +44,7 @@ export default function ApiDocsPage() {
       icon: CheckCircle,
       color: 'green',
       description: 'Validation des offres fournisseurs',
-      version: 'v1.0.0',
+      version: 'v1.1.0',
       status: 'active'
     }
   ]
@@ -1011,7 +1011,7 @@ function ValidationApiDocs() {
             </div>
             <div>
               <h2 className="text-3xl font-bold text-neutral-900">API Validation O!Deal</h2>
-              <p className="text-sm text-neutral-600">v1.0.0 - Validation automatique des offres fournisseurs</p>
+              <p className="text-sm text-neutral-600">v1.1.0 - Validation automatique des offres fournisseurs</p>
             </div>
           </div>
           <a
@@ -1104,21 +1104,22 @@ function ValidationApiDocs() {
             <h4 className="text-sm font-semibold text-neutral-900 mb-2">Body (JSON)</h4>
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
               <pre>{`{
-  // ✅ OBLIGATOIRES (7 champs)
+  // ✅ OBLIGATOIRES (6 champs)
   "offer_id": "uuid",                    // UUID de l'offre
-  "supplier_id": "uuid",                 // UUID du fournisseur
-  "item_id": "888413779764",             // TEXT: Code EAN/SKU/référence
+  "item_id": null,                       // TEXT ou NULL - Auto-généré si NULL
   "msrp": 299,                           // Prix MSRP TTC CHF
   "street_price": 249,                   // Prix street TTC CHF
   "promo_price": 169,                    // Prix promo TTC CHF
   "purchase_price_ht": 80,               // Prix achat HT
 
-  // ⭐ RECOMMANDÉS (pour règles métier et douanes)
-  "category_name": "Electronics",        // Catégorie produit
-  "subcategory_name": "Smartphones",     // Sous-catégorie produit
+  // ⭐ RECOMMANDÉS (Architecture multilingue avec IDs)
+  "category_id": "c1",                   // ID catégorie (recommandé)
+  "subcategory_id": "s5",                // ID sous-catégorie (recommandé)
   "purchase_currency": "EUR",            // Devise (EUR|USD|GBP|CHF)
 
-  // 📝 OPTIONNELS
+  // 📝 OPTIONNELS (Legacy - compatibilité noms)
+  "category_name": "Electronics",        // Catégorie par nom (fallback)
+  "subcategory_name": "Smartphones",     // Sous-catégorie par nom (fallback)
   "product_name": "iPhone 15 Pro",       // Nom du produit
   "ean": "0888413779764",                // EAN si différent de item_id
   "quantity": 10,                        // Quantité (défaut: 1)
@@ -1138,9 +1139,10 @@ function ValidationApiDocs() {
   "is_valid": true,                      // Deal valide selon les règles
   "deal_status": "good",                 // top|good|almost|bad
   "cost_id": "uuid",                     // ID du calcul (référence interne)
+  "generated_item_id": "uuid",           // 🆕 UUID auto-généré si item_id NULL
 
   "item_details": {
-    "item_id": "888413779764",           // Code EAN/SKU
+    "item_id": null,                     // Code EAN/SKU (null si auto-généré)
     "ean": "0888413779764",              // EAN
     "product_name": "iPhone 15 Pro"      // Nom du produit
   },

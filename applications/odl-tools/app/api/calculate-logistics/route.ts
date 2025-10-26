@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-// Configuration Supabase
-// Utilise local par défaut en dev, prod en production
-const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
-const supabaseUrl = isLocalDev
-  ? 'http://127.0.0.1:54331'
-  : process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = isLocalDev
-  ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
-  : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Lazy initialization of Supabase client to avoid build-time errors
+let supabaseClient: SupabaseClient | null = null
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+function getSupabaseClient() {
+  if (!supabaseClient) {
+    const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.USE_PROD_SUPABASE
+    const supabaseUrl = isLocalDev
+      ? 'http://127.0.0.1:54331'
+      : process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = isLocalDev
+      ? 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+      : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+    supabaseClient = createClient(supabaseUrl, supabaseKey)
+  }
+  return supabaseClient
+}
 
 /**
  * API Endpoint: /api/calculate-logistics
@@ -90,6 +97,7 @@ export async function POST(request: Request) {
     }
 
     // Appeler la fonction Supabase calculate_logistics_cost
+    const supabase = getSupabaseClient()
     const { data, error } = await supabase.rpc('calculate_logistics_cost', {
       p_length_cm: length_cm,
       p_width_cm: width_cm,

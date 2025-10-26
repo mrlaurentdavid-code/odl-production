@@ -1,0 +1,48 @@
+-- Migration: Align table schema with function expectations
+-- Date: 2025-10-26
+-- Purpose: Add missing columns and rename existing ones to match function INSERT
+
+-- Step 1: Rename columns to match function names
+ALTER TABLE offer_item_calculated_costs
+  RENAME COLUMN purchase_price_ht TO purchase_price_original;
+
+ALTER TABLE offer_item_calculated_costs
+  RENAME COLUMN customs_duty_rate TO customs_duty_rate_percent;
+
+-- Step 2: Drop GENERATED columns that conflict with function INSERT
+-- (Function tries to INSERT calculated values, but GENERATED columns can't be inserted into)
+ALTER TABLE offer_item_calculated_costs
+  DROP COLUMN IF EXISTS purchase_price_chf_ht CASCADE,
+  DROP COLUMN IF EXISTS cogs_total_ht CASCADE,
+  DROP COLUMN IF EXISTS marge_brute_ht CASCADE,
+  DROP COLUMN IF EXISTS marge_brute_percent CASCADE;
+
+-- Step 3: Add all missing columns that function expects
+ALTER TABLE offer_item_calculated_costs
+  ADD COLUMN IF NOT EXISTS purchase_price_chf_ht NUMERIC,
+  ADD COLUMN IF NOT EXISTS transport_cost_ht NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS receiving_cost_ht NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS preparation_cost_ht NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS logistics_total_ht NUMERIC DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS promo_price_ht NUMERIC,
+  ADD COLUMN IF NOT EXISTS cogs_ht NUMERIC,
+  ADD COLUMN IF NOT EXISTS marge_brute_ht NUMERIC,
+  ADD COLUMN IF NOT EXISTS marge_brute_percent NUMERIC,
+  ADD COLUMN IF NOT EXISTS is_publishable BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS applied_rule_id UUID,
+  ADD COLUMN IF NOT EXISTS validation_notes TEXT;
+
+-- Step 4: Add comments for clarity
+COMMENT ON COLUMN offer_item_calculated_costs.purchase_price_original IS 'Original purchase price (HT in original currency)';
+COMMENT ON COLUMN offer_item_calculated_costs.purchase_price_chf_ht IS 'Purchase price converted to CHF HT (with safety coefficient - calculated by function)';
+COMMENT ON COLUMN offer_item_calculated_costs.transport_cost_ht IS 'Transport cost (HT CHF)';
+COMMENT ON COLUMN offer_item_calculated_costs.receiving_cost_ht IS 'Receiving cost (HT CHF)';
+COMMENT ON COLUMN offer_item_calculated_costs.preparation_cost_ht IS 'Preparation cost (HT CHF)';
+COMMENT ON COLUMN offer_item_calculated_costs.logistics_total_ht IS 'Total logistics cost (HT CHF)';
+COMMENT ON COLUMN offer_item_calculated_costs.promo_price_ht IS 'Promo price excluding tax (HT CHF - calculated by function)';
+COMMENT ON COLUMN offer_item_calculated_costs.cogs_ht IS 'Total Cost of Goods Sold (HT CHF - calculated by function)';
+COMMENT ON COLUMN offer_item_calculated_costs.marge_brute_ht IS 'Gross margin (HT CHF - calculated by function)';
+COMMENT ON COLUMN offer_item_calculated_costs.marge_brute_percent IS 'Gross margin percentage (calculated by function)';
+COMMENT ON COLUMN offer_item_calculated_costs.is_publishable IS 'Whether the item passes validation thresholds';
+COMMENT ON COLUMN offer_item_calculated_costs.applied_rule_id IS 'ID of the business rule that was applied';
+COMMENT ON COLUMN offer_item_calculated_costs.validation_notes IS 'Validation issues and warnings concatenated';
