@@ -1034,16 +1034,19 @@ function ValidationApiDocs() {
             <h3 className="font-semibold text-green-900 mb-2">Validation complète des offres</h3>
             <div className="text-sm text-green-800 space-y-2">
               <div>
-                <strong>• Calcul COGS complet</strong> : Achat HT + conversion devise + logistique (DHL + Swiss Post) + douane + frais paiement
+                <strong>• Calcul COGS interne</strong> : Achat HT + conversion devise + logistique + douane + frais paiement
               </div>
               <div>
-                <strong>• Validation marges</strong> : Marge brute minimum 20%, cible 30%, maximum 50%
+                <strong>• Règles métier hiérarchiques</strong> : Règles globales, par catégorie ou par sous-catégorie (configurables dans ODL Rules)
               </div>
               <div>
-                <strong>• Économies client</strong> : Minimum 30% vs MSRP, 18% vs street price
+                <strong>• Deal status</strong> : top (⭐ excellent), good (✅ bon), almost (⚠️ limite), bad (❌ refusé)
               </div>
               <div>
-                <strong>• Deal status</strong> : top (excellent), good (bon), almost (limite), bad (refusé)
+                <strong>• Projections financières</strong> : BEP, risk score A/B/C/D, scénarios calculés automatiquement
+              </div>
+              <div>
+                <strong>⚠️ Données sensibles protégées</strong> : Les coûts détaillés, marges et seuils ne sont PAS exposés aux fournisseurs
               </div>
             </div>
           </div>
@@ -1101,22 +1104,26 @@ function ValidationApiDocs() {
             <h4 className="text-sm font-semibold text-neutral-900 mb-2">Body (JSON)</h4>
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
               <pre>{`{
-  // OBLIGATOIRES
+  // ✅ OBLIGATOIRES (7 champs)
   "offer_id": "uuid",                    // UUID de l'offre
-  "item_id": "uuid",                     // UUID de l'item
+  "supplier_id": "uuid",                 // UUID du fournisseur
+  "item_id": "888413779764",             // TEXT: Code EAN/SKU/référence
   "msrp": 299,                           // Prix MSRP TTC CHF
   "street_price": 249,                   // Prix street TTC CHF
   "promo_price": 169,                    // Prix promo TTC CHF
   "purchase_price_ht": 80,               // Prix achat HT
 
-  // OPTIONNELS
-  "purchase_currency": "EUR",            // EUR|USD|GBP|CHF (défaut: CHF)
-  "product_name": "AirPods Pro 2",       // Nom du produit
-  "ean": "1234567890123",                // Code EAN
-  "package_weight_kg": 0.5,              // Poids en kg
-  "subcategory_id": "uuid",              // Subcategory ID
-  "quantity": 1,                         // Quantité (défaut: 1)
-  "pesa_fee_ht": 0,                      // Frais PESA HT (défaut: 0)
+  // ⭐ RECOMMANDÉS (pour règles métier et douanes)
+  "category_name": "Electronics",        // Catégorie produit
+  "subcategory_name": "Smartphones",     // Sous-catégorie produit
+  "purchase_currency": "EUR",            // Devise (EUR|USD|GBP|CHF)
+
+  // 📝 OPTIONNELS
+  "product_name": "iPhone 15 Pro",       // Nom du produit
+  "ean": "0888413779764",                // EAN si différent de item_id
+  "quantity": 10,                        // Quantité (défaut: 1)
+  "package_weight_kg": 0.8,              // Poids en kg (défaut: 0.5)
+  "pesa_fee_ht": 2.50,                   // Frais PESA HT (défaut: 0)
   "warranty_cost_ht": 0                  // Coût garantie HT (défaut: 0)
 }`}</pre>
             </div>
@@ -1129,59 +1136,46 @@ function ValidationApiDocs() {
               <pre>{`{
   "success": true,
   "is_valid": true,                      // Deal valide selon les règles
-  "deal_status": "top",                  // top|good|almost|bad
-  "cost_id": "uuid",                     // ID de la validation
-  "offer_id": "uuid",
-  "item_id": "uuid",
+  "deal_status": "good",                 // top|good|almost|bad
+  "cost_id": "uuid",                     // ID du calcul (référence interne)
 
-  "costs": {
-    "purchase_price_ht": 80,             // Prix achat HT
-    "purchase_price_chf_ht": 73.98,      // Converti en CHF HT
-    "currency_rate": 0.9248,             // Taux EUR→CHF
-    "currency_safety_coef": 1.02,        // Coefficient sécurité 2%
-    "logistics_inbound_ht": 7.5,         // DHL inbound HT
-    "logistics_outbound_ht": 8.4,        // Swiss Post outbound HT
-    "logistics_inbound_carrier": "DHL",
-    "logistics_outbound_carrier": "Swiss Post",
-    "customs_duty_ht": 0,                // Droits douane HT
-    "customs_duty_rate": 0,              // Taux douane (%)
-    "tar_ht": 0,                         // TAR HT
-    "pesa_fee_ht": 0,                    // PESA HT
-    "warranty_cost_ht": 0,               // Garantie HT
-    "payment_fee_ht": 5.67,              // Frais Stripe HT
-    "cogs_total_ht": 95.55,              // COGS total HT
-    "cogs_total_ttc": 103.29             // COGS total TTC
+  "item_details": {
+    "item_id": "888413779764",           // Code EAN/SKU
+    "ean": "0888413779764",              // EAN
+    "product_name": "iPhone 15 Pro"      // Nom du produit
   },
 
-  "margins": {
-    "marge_brute_chf": 65.71,            // Marge brute CHF
-    "marge_brute_percent": 38.89,        // Marge brute %
-    "minimum_margin": 20,                // Marge min requise
-    "target_margin": 30,                 // Marge cible
-    "maximum_margin": 50                 // Marge max autorisée
+  "pricing": {
+    "msrp": 1299.00,                     // Prix MSRP TTC CHF
+    "street_price": 1199.00,             // Prix street TTC CHF
+    "promo_price": 999.00,               // Prix promo TTC CHF
+    "purchase_price_original": 750.00,   // Prix achat original
+    "purchase_currency": "EUR",          // Devise d'achat
+    "currency_rate": 0.95                // Taux de conversion appliqué
   },
 
-  "savings": {
-    "eco_vs_msrp_chf": 130,              // Économie vs MSRP (CHF)
-    "eco_vs_msrp_percent": 43.48,        // Économie vs MSRP (%)
-    "eco_vs_street_chf": 80,             // Économie vs street (CHF)
-    "eco_vs_street_percent": 32.13       // Économie vs street (%)
+  "applied_rule": {
+    "rule_id": "uuid",                   // ID de la règle appliquée
+    "rule_name": "Electronics - Smartphones Rules",
+    "scope": "subcategory",              // global|category|subcategory
+    "category": "Electronics",           // Catégorie
+    "subcategory": "Smartphones"         // Sous-catégorie
   },
 
-  "metadata": {
-    "validated_at": "2025-10-25T18:54:26Z",
-    "supplier_id": "uuid",
-    "user_id": "uuid",
-    "product_name": "AirPods Pro 2",
-    "ean": "1234567890123",
-    "package_weight_kg": 0.5,
-    "quantity": 1,
-    "subcategory_id": "uuid",
-    "gaming_detected": false             // Anti-gaming: true si +5 modifs/h
-  },
+  "validation_issues": [                 // Vide si validé, sinon liste des issues
+    {
+      "issue": "deal_marginal",
+      "message": "Deal acceptable mais pourrait être amélioré"
+    }
+  ]
+}
 
-  "validation_issues": []                // Vide si valid, sinon liste des problèmes
-}`}</pre>
+// ⚠️ DONNÉES NON EXPOSÉES (confidentielles O!Deal):
+// - Coûts détaillés (logistique, douane, TAR, PESA, frais paiement)
+// - Marges calculées (brute, pourcentage)
+// - Seuils de validation (min/max marges, économies)
+// - Projections financières (BEP, risk score)
+`}</pre>
             </div>
           </div>
 
@@ -1193,17 +1187,20 @@ function ValidationApiDocs() {
                 <h5 className="font-semibold text-green-900 text-sm mb-2">Statuts de deal</h5>
                 <div className="text-sm text-green-800 space-y-2">
                   <div>
-                    <strong className="text-green-700">• top</strong> : Excellent deal (économie ≥40% MSRP OU ≥25% street, marge ≥30%)
+                    <strong className="text-green-700">⭐ top</strong> : Excellent deal - Publier immédiatement
                   </div>
                   <div>
-                    <strong className="text-blue-700">• good</strong> : Bon deal (économie ≥30% MSRP ET ≥18% street, marge ≥25%)
+                    <strong className="text-blue-700">✅ good</strong> : Bon deal - Publier normalement
                   </div>
                   <div>
-                    <strong className="text-amber-700">• almost</strong> : Deal limite (marge ≥20% mais économies insuffisantes)
+                    <strong className="text-amber-700">⚠️ almost</strong> : Deal marginal - Évaluer au cas par cas
                   </div>
                   <div>
-                    <strong className="text-red-700">• bad</strong> : Deal refusé (marge {'<'}20% OU économies {'<'}seuils)
+                    <strong className="text-red-700">❌ bad</strong> : Deal refusé - Ne PAS publier
                   </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-green-300 text-xs text-green-700">
+                  <strong>Note</strong> : Les critères exacts (marges min/max, économies requises) sont définis dans les règles métier ODL (confidentielles) et peuvent varier par catégorie/sous-catégorie.
                 </div>
               </div>
             </div>
@@ -1215,18 +1212,22 @@ function ValidationApiDocs() {
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
               <pre>{`curl -X POST https://api.odl-tools.ch/api/validate-item \\
   -H "Content-Type: application/json" \\
-  -H "X-API-Key: odl_sup_prod_test_xyz789" \\
+  -H "X-API-Key: WEWEB_PRODUCTION_2025_API_KEY" \\
   -d '{
-    "offer_id": "aaaa1111-e89b-12d3-a456-426614174000",
-    "item_id": "bbbb2222-e89b-12d3-a456-426614174001",
-    "msrp": 299,
-    "street_price": 249,
-    "promo_price": 169,
-    "purchase_price_ht": 80,
+    "offer_id": "1f218950-3789-4176-a883-958c593a84af",
+    "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
+    "item_id": "888413779764",
+    "ean": "0888413779764",
+    "product_name": "iPhone 15 Pro 256GB",
+    "category_name": "Electronics",
+    "subcategory_name": "Smartphones",
+    "msrp": 1299,
+    "street_price": 1199,
+    "promo_price": 999,
+    "purchase_price_ht": 750,
     "purchase_currency": "EUR",
-    "product_name": "AirPods Pro 2",
-    "package_weight_kg": 0.3,
-    "quantity": 1
+    "quantity": 10,
+    "package_weight_kg": 0.8
   }'`}</pre>
             </div>
           </div>
@@ -1253,23 +1254,27 @@ Headers:
 
 // Body (bindings depuis formulaire)
 {
-  "offer_id": {{form.offer_id}},
-  "item_id": {{form.item_id}},
-  "msrp": {{form.msrp}},
-  "street_price": {{form.street_price}},
-  "promo_price": {{form.promo_price}},
-  "purchase_price_ht": {{form.purchase_price}},
-  "purchase_currency": {{form.currency}},
-  "product_name": {{form.product_name}},
-  "package_weight_kg": {{form.weight}},
-  "quantity": {{form.quantity}}
+  "offer_id": {{offer.id}},
+  "supplier_id": {{supplier.id}},
+  "item_id": {{product.ean || product.sku}},
+  "ean": {{product.ean}},
+  "product_name": {{product.name}},
+  "category_name": {{product.category.name}},
+  "subcategory_name": {{product.subcategory.name}},
+  "msrp": {{product.msrp}},
+  "street_price": {{product.street_price}},
+  "promo_price": {{product.promo_price}},
+  "purchase_price_ht": {{product.purchase_price}},
+  "purchase_currency": {{product.currency || "CHF"}},
+  "quantity": {{product.quantity}},
+  "package_weight_kg": {{product.weight}}
 }
 
 // Afficher les résultats
-Deal Status: {{api_response.data.deal_status}}
-Valid: {{api_response.data.is_valid}}
-Marge: {{api_response.data.margins.marge_brute_percent}}%
-Économie: {{api_response.data.savings.eco_vs_msrp_percent}}%`}</pre>
+Deal Status: {{response.deal_status}}
+Valid: {{response.is_valid}}
+Product: {{response.item_details.product_name}}
+Rule: {{response.applied_rule.rule_name}}`}</pre>
             </div>
           </div>
 
@@ -1291,20 +1296,24 @@ Credential Data:
 // Body (JSON)
 {
   "offer_id": "{{$json.offer_id}}",
-  "item_id": "{{$json.item_id}}",
+  "supplier_id": "{{$json.supplier_id}}",
+  "item_id": "{{$json.ean || $json.sku}}",
+  "product_name": "{{$json.product_name}}",
+  "category_name": "{{$json.category}}",
+  "subcategory_name": "{{$json.subcategory}}",
   "msrp": {{$json.msrp}},
   "street_price": {{$json.street_price}},
   "promo_price": {{$json.promo_price}},
   "purchase_price_ht": {{$json.purchase_price}},
   "purchase_currency": "{{$json.currency}}",
-  "product_name": "{{$json.product_name}}"
+  "quantity": {{$json.quantity}}
 }
 
 // Extraire dans le workflow suivant
-{{ $json.deal_status }}              // Statut du deal
+{{ $json.deal_status }}              // Statut: top|good|almost|bad
 {{ $json.is_valid }}                 // Deal valide?
-{{ $json.margins.marge_brute_percent }} // Marge %
-{{ $json.costs.cogs_total_ttc }}    // COGS total`}</pre>
+{{ $json.item_details.product_name }} // Nom du produit
+{{ $json.applied_rule.rule_name }}   // Règle appliquée`}</pre>
             </div>
           </div>
         </div>
