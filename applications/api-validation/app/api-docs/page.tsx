@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Code2, Server, Zap, Database, Link as LinkIcon, Calculator, Image as ImageIcon, Languages, ExternalLink } from 'lucide-react'
+import { Code2, Server, Zap, Database, Link as LinkIcon, Calculator, Image as ImageIcon, Languages, ExternalLink, CheckCircle, ShieldCheck } from 'lucide-react'
 import { BackToDashboard } from '@/components/ui/BackToDashboard'
 import Link from 'next/link'
 
-type ApiSection = 'tar' | 'image-converter' | 'translation'
+type ApiSection = 'tar' | 'image-converter' | 'translation' | 'validation'
 
 export default function ApiDocsPage() {
   const [activeApi, setActiveApi] = useState<ApiSection>('tar')
@@ -37,6 +37,15 @@ export default function ApiDocsPage() {
       description: 'Traduction multilingue (à venir)',
       version: 'v1.0.0',
       status: 'coming-soon'
+    },
+    {
+      id: 'validation' as ApiSection,
+      name: 'Validation O!Deal',
+      icon: CheckCircle,
+      color: 'green',
+      description: 'Validation des offres fournisseurs',
+      version: 'v1.0.0',
+      status: 'active'
     }
   ]
 
@@ -75,7 +84,7 @@ export default function ApiDocsPage() {
                   }
                 `}
                 style={isActive ? {
-                  backgroundColor: api.color === 'blue' ? '#3b82f6' : api.color === 'indigo' ? '#6366f1' : '#a855f7'
+                  backgroundColor: api.color === 'blue' ? '#3b82f6' : api.color === 'indigo' ? '#6366f1' : api.color === 'purple' ? '#a855f7' : '#22c55e'
                 } : {}}
               >
                 <div className="flex items-start gap-3">
@@ -83,11 +92,11 @@ export default function ApiDocsPage() {
                     w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
                   `}
                   style={!isActive && !isComingSoon ? {
-                    backgroundColor: api.color === 'blue' ? '#dbeafe' : api.color === 'indigo' ? '#e0e7ff' : '#f3e8ff'
+                    backgroundColor: api.color === 'blue' ? '#dbeafe' : api.color === 'indigo' ? '#e0e7ff' : api.color === 'purple' ? '#f3e8ff' : '#dcfce7'
                   } : isActive ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: '#e5e5e5' }}>
                     <Icon className="w-5 h-5"
                       style={!isActive && !isComingSoon ? {
-                        color: api.color === 'blue' ? '#2563eb' : api.color === 'indigo' ? '#4f46e5' : '#9333ea'
+                        color: api.color === 'blue' ? '#2563eb' : api.color === 'indigo' ? '#4f46e5' : api.color === 'purple' ? '#9333ea' : '#16a34a'
                       } : isActive ? { color: 'white' } : { color: '#a3a3a3' }} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -128,6 +137,7 @@ export default function ApiDocsPage() {
           {activeApi === 'tar' && <TarCalculatorDocs />}
           {activeApi === 'image-converter' && <ImageConverterDocs />}
           {activeApi === 'translation' && <TranslationDocs />}
+          {activeApi === 'validation' && <ValidationApiDocs />}
         </div>
       </main>
     </div>
@@ -980,6 +990,427 @@ function TranslationDocs() {
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-200 text-purple-800 rounded-lg text-sm font-medium">
           <Zap className="w-4 h-4" />
           Fonctionnalités prévues : Traduction automatique, détection de langue, support multi-formats
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ===================================
+// VALIDATION O!DEAL API DOCS
+// ===================================
+function ValidationApiDocs() {
+  return (
+    <>
+      {/* Header */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-neutral-900">API Validation O!Deal</h2>
+              <p className="text-sm text-neutral-600">v1.0.0 - Validation automatique des offres fournisseurs</p>
+            </div>
+          </div>
+          <a
+            href="https://api.odl-tools.ch/api/validate-item"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            API Documentation
+          </a>
+        </div>
+      </div>
+
+      {/* Info Section */}
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 mb-6">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="w-6 h-6 text-green-600 mt-1" />
+          <div>
+            <h3 className="font-semibold text-green-900 mb-2">Validation complète des offres</h3>
+            <div className="text-sm text-green-800 space-y-2">
+              <div>
+                <strong>• Calcul COGS interne</strong> : Achat HT + conversion devise + logistique + douane + frais paiement
+              </div>
+              <div>
+                <strong>• Règles métier hiérarchiques</strong> : Règles globales, par catégorie ou par sous-catégorie (configurables dans ODL Rules)
+              </div>
+              <div>
+                <strong>• Deal status</strong> : top (⭐ excellent), good (✅ bon), almost (⚠️ limite), bad (❌ refusé)
+              </div>
+              <div>
+                <strong>• Projections financières</strong> : BEP, risk score A/B/C/D, scénarios calculés automatiquement
+              </div>
+              <div>
+                <strong>⚠️ Données sensibles protégées</strong> : Les coûts détaillés, marges et seuils ne sont PAS exposés aux fournisseurs
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Base URL */}
+      <div className="bg-white border border-border rounded-xl p-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="w-4 h-4 text-neutral-600" />
+            <span className="text-sm font-semibold text-neutral-700">URL de base</span>
+          </div>
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">Développement</div>
+                <code className="text-blue-600">http://localhost:3001</code>
+              </div>
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">Production VPS</div>
+                <code className="text-green-600">https://api.odl-tools.ch</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Endpoint: validate-item */}
+        <div className="mb-6 border-l-4 border-green-500 pl-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">POST</span>
+            <code className="text-sm font-mono text-neutral-900">/api/validate-item</code>
+          </div>
+
+          <p className="text-sm text-neutral-600 mb-4">
+            Validation complète d'un item avec calcul COGS, marges, économies client et statut du deal.
+            Connexion directe à la base de données Supabase production.
+          </p>
+
+          {/* Authentication */}
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <h5 className="font-semibold text-amber-900 text-sm mb-1">Authentication requise</h5>
+                <p className="text-sm text-amber-800">
+                  Ajouter l'API key dans le header <code className="bg-amber-100 px-1 rounded">X-API-Key</code> ou <code className="bg-amber-100 px-1 rounded">Authorization</code>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Request Body */}
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Body (JSON)</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+              <pre>{`{
+  // ✅ OBLIGATOIRES (7 champs)
+  "offer_id": "uuid",                    // UUID de l'offre
+  "supplier_id": "uuid",                 // UUID du fournisseur
+  "item_id": "888413779764",             // TEXT: Code EAN/SKU/référence
+  "msrp": 299,                           // Prix MSRP TTC CHF
+  "street_price": 249,                   // Prix street TTC CHF
+  "promo_price": 169,                    // Prix promo TTC CHF
+  "purchase_price_ht": 80,               // Prix achat HT
+
+  // ⭐ RECOMMANDÉS (pour règles métier et douanes)
+  "category_name": "Electronics",        // Catégorie produit
+  "subcategory_name": "Smartphones",     // Sous-catégorie produit
+  "purchase_currency": "EUR",            // Devise (EUR|USD|GBP|CHF)
+
+  // 📝 OPTIONNELS
+  "product_name": "iPhone 15 Pro",       // Nom du produit
+  "ean": "0888413779764",                // EAN si différent de item_id
+  "quantity": 10,                        // Quantité (défaut: 1)
+  "package_weight_kg": 0.8,              // Poids en kg (défaut: 0.5)
+  "pesa_fee_ht": 2.50,                   // Frais PESA HT (défaut: 0)
+  "warranty_cost_ht": 0                  // Coût garantie HT (défaut: 0)
+}`}</pre>
+            </div>
+          </div>
+
+          {/* Response */}
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Réponse</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+              <pre>{`{
+  "success": true,
+  "is_valid": true,                      // Deal valide selon les règles
+  "deal_status": "good",                 // top|good|almost|bad
+  "cost_id": "uuid",                     // ID du calcul (référence interne)
+
+  "item_details": {
+    "item_id": "888413779764",           // Code EAN/SKU
+    "ean": "0888413779764",              // EAN
+    "product_name": "iPhone 15 Pro"      // Nom du produit
+  },
+
+  "pricing": {
+    "msrp": 1299.00,                     // Prix MSRP TTC CHF
+    "street_price": 1199.00,             // Prix street TTC CHF
+    "promo_price": 999.00,               // Prix promo TTC CHF
+    "purchase_price_original": 750.00,   // Prix achat original
+    "purchase_currency": "EUR",          // Devise d'achat
+    "currency_rate": 0.95                // Taux de conversion appliqué
+  },
+
+  "applied_rule": {
+    "rule_id": "uuid",                   // ID de la règle appliquée
+    "rule_name": "Electronics - Smartphones Rules",
+    "scope": "subcategory",              // global|category|subcategory
+    "category": "Electronics",           // Catégorie
+    "subcategory": "Smartphones"         // Sous-catégorie
+  },
+
+  "validation_issues": [                 // Vide si validé, sinon liste des issues
+    {
+      "issue": "deal_marginal",
+      "message": "Deal acceptable mais pourrait être amélioré"
+    }
+  ]
+}
+
+// ⚠️ DONNÉES NON EXPOSÉES (confidentielles O!Deal):
+// - Coûts détaillés (logistique, douane, TAR, PESA, frais paiement)
+// - Marges calculées (brute, pourcentage)
+// - Seuils de validation (min/max marges, économies)
+// - Projections financières (BEP, risk score)
+`}</pre>
+            </div>
+          </div>
+
+          {/* Deal Statuses */}
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              <div>
+                <h5 className="font-semibold text-green-900 text-sm mb-2">Statuts de deal</h5>
+                <div className="text-sm text-green-800 space-y-2">
+                  <div>
+                    <strong className="text-green-700">⭐ top</strong> : Excellent deal - Publier immédiatement
+                  </div>
+                  <div>
+                    <strong className="text-blue-700">✅ good</strong> : Bon deal - Publier normalement
+                  </div>
+                  <div>
+                    <strong className="text-amber-700">⚠️ almost</strong> : Deal marginal - Évaluer au cas par cas
+                  </div>
+                  <div>
+                    <strong className="text-red-700">❌ bad</strong> : Deal refusé - Ne PAS publier
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-green-300 text-xs text-green-700">
+                  <strong>Note</strong> : Les critères exacts (marges min/max, économies requises) sont définis dans les règles métier ODL (confidentielles) et peuvent varier par catégorie/sous-catégorie.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* cURL Example */}
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Exemple cURL</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+              <pre>{`curl -X POST https://api.odl-tools.ch/api/validate-item \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: WEWEB_PRODUCTION_2025_API_KEY" \\
+  -d '{
+    "offer_id": "1f218950-3789-4176-a883-958c593a84af",
+    "supplier_id": "334773ca-22ab-43bb-834f-eb50aa1d01f8",
+    "item_id": "888413779764",
+    "ean": "0888413779764",
+    "product_name": "iPhone 15 Pro 256GB",
+    "category_name": "Electronics",
+    "subcategory_name": "Smartphones",
+    "msrp": 1299,
+    "street_price": 1199,
+    "promo_price": 999,
+    "purchase_price_ht": 750,
+    "purchase_currency": "EUR",
+    "quantity": 10,
+    "package_weight_kg": 0.8
+  }'`}</pre>
+            </div>
+          </div>
+        </div>
+
+        {/* Integration Examples */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">Exemples d'intégration</h3>
+
+          {/* WeWeb */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <LinkIcon className="w-4 h-4 text-blue-600" />
+              <h4 className="font-semibold text-neutral-900">WeWeb (REST API)</h4>
+            </div>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+              <pre>{`// Configuration du REST API Data Source dans WeWeb
+Base URL: https://api.odl-tools.ch
+Endpoint: /api/validate-item
+Method: POST
+Headers:
+  Content-Type: application/json
+  X-API-Key: {{supplier_api_key}}
+
+// Body (bindings depuis formulaire)
+{
+  "offer_id": {{offer.id}},
+  "supplier_id": {{supplier.id}},
+  "item_id": {{product.ean || product.sku}},
+  "ean": {{product.ean}},
+  "product_name": {{product.name}},
+  "category_name": {{product.category.name}},
+  "subcategory_name": {{product.subcategory.name}},
+  "msrp": {{product.msrp}},
+  "street_price": {{product.street_price}},
+  "promo_price": {{product.promo_price}},
+  "purchase_price_ht": {{product.purchase_price}},
+  "purchase_currency": {{product.currency || "CHF"}},
+  "quantity": {{product.quantity}},
+  "package_weight_kg": {{product.weight}}
+}
+
+// Afficher les résultats
+Deal Status: {{response.deal_status}}
+Valid: {{response.is_valid}}
+Product: {{response.item_details.product_name}}
+Rule: {{response.applied_rule.rule_name}}`}</pre>
+            </div>
+          </div>
+
+          {/* N8N */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <LinkIcon className="w-4 h-4 text-purple-600" />
+              <h4 className="font-semibold text-neutral-900">N8N (HTTP Request Node)</h4>
+            </div>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+              <pre>{`// Node: HTTP Request
+Method: POST
+URL: https://api.odl-tools.ch/api/validate-item
+Authentication: Generic Credential
+Credential Data:
+  Header Name: X-API-Key
+  Value: {{$credentials.apiKey}}
+
+// Body (JSON)
+{
+  "offer_id": "{{$json.offer_id}}",
+  "supplier_id": "{{$json.supplier_id}}",
+  "item_id": "{{$json.ean || $json.sku}}",
+  "product_name": "{{$json.product_name}}",
+  "category_name": "{{$json.category}}",
+  "subcategory_name": "{{$json.subcategory}}",
+  "msrp": {{$json.msrp}},
+  "street_price": {{$json.street_price}},
+  "promo_price": {{$json.promo_price}},
+  "purchase_price_ht": {{$json.purchase_price}},
+  "purchase_currency": "{{$json.currency}}",
+  "quantity": {{$json.quantity}}
+}
+
+// Extraire dans le workflow suivant
+{{ $json.deal_status }}              // Statut: top|good|almost|bad
+{{ $json.is_valid }}                 // Deal valide?
+{{ $json.item_details.product_name }} // Nom du produit
+{{ $json.applied_rule.rule_name }}   // Règle appliquée`}</pre>
+            </div>
+          </div>
+        </div>
+
+        {/* API Keys Management */}
+        <div className="mt-6 border-t border-neutral-200 pt-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">Gestion des API Keys</h3>
+
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600 mt-0.5" />
+              <div>
+                <h5 className="font-semibold text-blue-900 text-sm mb-2">API Key de test (production)</h5>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p><strong>API Key</strong> : <code className="bg-blue-100 px-2 py-1 rounded">odl_sup_prod_test_xyz789</code></p>
+                  <p><strong>Supplier</strong> : Test Company SA - PRODUCTION</p>
+                  <p><strong>Quota</strong> : 1000 validations/jour</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Créer une API key réelle</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+              <pre>{`# 1. Générer une clé aléatoire sécurisée
+API_KEY="odl_sup_prod_$(openssl rand -hex 12)"
+echo "API Key: $API_KEY"
+
+# 2. Calculer le hash SHA256
+HASH=$(echo -n "$API_KEY" | shasum -a 256 | cut -d' ' -f1)
+echo "Hash: $HASH"
+
+# 3. Insérer dans Supabase (via Dashboard SQL Editor)
+INSERT INTO supplier_registry (
+  supplier_id,
+  company_name,
+  api_key_hash,
+  api_key_prefix,
+  validation_status,
+  is_active,
+  max_daily_validations
+)
+VALUES (
+  gen_random_uuid(),
+  'Nom du Fournisseur SA',
+  '$HASH',
+  'odl_sup_prod',
+  'approved',
+  true,
+  1000
+);
+
+# 4. Communiquer UNIQUEMENT l'API_KEY au fournisseur
+# ⚠️ NE JAMAIS stocker la clé en clair dans la BDD`}</pre>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Responses */}
+        <div className="mt-6 border-t border-neutral-200 pt-6">
+          <h4 className="text-sm font-semibold text-neutral-900 mb-2">Codes de réponse</h4>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 text-sm">
+              <span className="px-2 py-1 bg-green-100 text-green-700 font-mono text-xs rounded">200</span>
+              <span className="text-neutral-700">Validation réussie (même si deal refusé)</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="px-2 py-1 bg-red-100 text-red-700 font-mono text-xs rounded">400</span>
+              <span className="text-neutral-700">Requête invalide (champs manquants, format incorrect)</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="px-2 py-1 bg-amber-100 text-amber-700 font-mono text-xs rounded">401</span>
+              <span className="text-neutral-700">API key invalide ou manquante</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="px-2 py-1 bg-amber-100 text-amber-700 font-mono text-xs rounded">429</span>
+              <span className="text-neutral-700">Quota journalier dépassé</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="px-2 py-1 bg-red-100 text-red-700 font-mono text-xs rounded">500</span>
+              <span className="text-neutral-700">Erreur serveur interne</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Health Check */}
+        <div className="mt-6 border-t border-neutral-200 pt-6">
+          <h4 className="text-sm font-semibold text-neutral-900 mb-2">Documentation API (GET)</h4>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">GET</span>
+            <code className="text-sm font-mono text-neutral-900">/api/validate-item</code>
+          </div>
+          <p className="text-sm text-neutral-600 mb-2">Obtenir la documentation complète de l'API</p>
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-xs">
+            <code>{`curl https://api.odl-tools.ch/api/validate-item`}</code>
+          </div>
         </div>
       </div>
     </>
