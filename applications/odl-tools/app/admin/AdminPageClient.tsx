@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import AdminUserTable from '@/components/AdminUserTable'
 import InviteUserModal from '@/components/InviteUserModal'
 import { BackToDashboard } from '@/components/ui/BackToDashboard'
+import { Settings, Users, FileCheck, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 
 interface Profile {
   id: string
@@ -64,6 +66,62 @@ export default function AdminPageClient({ users, pendingProfilesCount }: { users
             </div>
           </div>
         )}
+
+          {/* Admin Quick Links */}
+          <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Link
+              href="/admin/odl-rules"
+              className="bg-white border-2 border-blue-200 rounded-2xl p-6 hover:shadow-lg hover:border-blue-400 transition-all group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <Settings className="w-6 h-6 text-blue-600" />
+                </div>
+                <ArrowRight className="w-5 h-5 text-blue-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Règles ODL</h3>
+              <p className="text-sm text-gray-600">
+                Configurez les règles métier de validation (global, catégorie, sous-catégorie)
+              </p>
+            </Link>
+
+            <Link
+              href="/admin/profile-validation"
+              className="bg-white border-2 border-purple-200 rounded-2xl p-6 hover:shadow-lg hover:border-purple-400 transition-all group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                  <FileCheck className="w-6 h-6 text-purple-600" />
+                </div>
+                <ArrowRight className="w-5 h-5 text-purple-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Validation Profils</h3>
+              <p className="text-sm text-gray-600">
+                Validez les nouveaux utilisateurs qui ont complété leur onboarding
+              </p>
+              {pendingProfilesCount > 0 && (
+                <span className="inline-block mt-2 px-3 py-1 bg-purple-500 text-white rounded-full text-xs font-bold">
+                  {pendingProfilesCount} en attente
+                </span>
+              )}
+            </Link>
+
+            <Link
+              href="/admin/access-management"
+              className="bg-white border-2 border-green-200 rounded-2xl p-6 hover:shadow-lg hover:border-green-400 transition-all group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                  <Users className="w-6 h-6 text-green-600" />
+                </div>
+                <ArrowRight className="w-5 h-5 text-green-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Gestion Accès</h3>
+              <p className="text-sm text-gray-600">
+                Gérez les permissions d'accès aux applications ODL Tools
+              </p>
+            </Link>
+          </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
