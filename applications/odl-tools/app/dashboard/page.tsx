@@ -1,5 +1,5 @@
 import { AppCard } from '@/components/ui/AppCard'
-import { Calculator, Receipt, TrendingUp, Users, Shield, Code2, Image as ImageIcon, Languages, Gamepad2, Truck, Globe } from 'lucide-react'
+import { Calculator, Receipt, TrendingUp, Users, Shield, Code2, Image as ImageIcon, Languages, Gamepad2, Truck, Globe, Settings } from 'lucide-react'
 import { getUserProfile } from '@/lib/supabase-server'
 import Link from 'next/link'
 
@@ -189,7 +189,7 @@ export default async function Dashboard() {
               Administration
             </h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link href="/admin" className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-shadow text-left">
               <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                 <Users className="w-5 h-5 text-purple-600" />
@@ -215,6 +215,15 @@ export default async function Dashboard() {
               <div>
                 <div className="font-medium text-neutral-900">Gestion accès</div>
                 <div className="text-xs text-neutral-600">Permissions & rôles</div>
+              </div>
+            </Link>
+            <Link href="/admin/odl-rules" className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-shadow text-left">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Settings className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="font-medium text-neutral-900">Règles ODL</div>
+                <div className="text-xs text-neutral-600">Configuration validation</div>
               </div>
             </Link>
           </div>
