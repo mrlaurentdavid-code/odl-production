@@ -8,7 +8,7 @@ echo "🚀 Deploying API Validation O!Deal to Server..."
 
 SERVER="root@31.97.193.159"
 SSH_KEY="$HOME/.ssh/claude_temp_key"
-LOCAL_PATH="/Users/laurentdavid/Desktop/odl-projects/odl-tools"
+LOCAL_PATH="/Users/laurentdavid/Desktop/odl-projects/odl-production/applications/odl-tools"
 REMOTE_PATH="/opt/api-validation"
 
 # Colors

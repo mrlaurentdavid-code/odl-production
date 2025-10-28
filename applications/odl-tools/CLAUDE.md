@@ -313,3 +313,93 @@ supabase db push
 
 ### Migrations échouent
 → Vérifier l'ordre (alphabétique), tester avec `supabase db reset`
+
+### API validation retourne "internal server error"
+→ Vérifier que `calculate_transport_cost_with_optimization()` existe
+→ Vérifier les logs: `docker logs api-validation --tail 100`
+→ Voir `MIGRATION_INTERDEPENDENCIES.md` pour diagnostic complet
+
+## 📅 Recent Changes
+
+### 2025-10-27 - Session: API Validation Fixes et Transport Dynamique
+
+**Contexte**: Correction de plusieurs problèmes critiques avec l'API de validation
+
+#### 1. Filtrage des Réponses pour Fournisseurs (app/api/validate-item/route.ts)
+- ✅ **Masquage des coûts internes**: PESA, TAR, logistics, marges
+- ✅ **Commentaires filtrés**: Pas de montants CHF visibles
+- ✅ **Messages génériques**: Deal status en français sans détails financiers
+- 📁 Fichier modifié: `app/api/validate-item/route.ts` (ajout STEP 6)
+
+#### 2. Intégration Transport Calculator Dynamique
+**Migrations créées**:
+- ✅ **Migration 33** (`20251027000033_fix_pesa_and_tar_logic.sql`)
+  - Correction logique PESA et TAR
+  - Fix champs `has_battery` vs `contain_battery`
+
+- ✅ **Migration 34** (`20251027000034_fix_currency_lookup_critical.sql`)
+  - Correction requête `currency_rates`
+  - Utilisation `from_currency`/`to_currency` au lieu de `currency_pair`
+
+- ✅ **Migration 35** (`20251027000035_integrate_transport_calculator.sql`)
+  - Remplacement coûts hardcodés (12.50 CHF) par calcul dynamique
+  - Appel à `calculate_transport_cost_with_optimization()`
+  - Fallback à 12.50 CHF en cas d'erreur
+  - ⚠️ **Problème introduit**: INSERT supprimé accidentellement
+
+#### 3. Correction Type subcategory_id et Restauration INSERT
+**Problème identifié**:
+- Table `offer_item_calculated_costs` avait `subcategory_id UUID`
+- WeWeb envoie `subcategory_id TEXT` ("s22", "s20", etc.)
+- Migration 36 tentait cast `::UUID` qui échoue → timeout 2+ minutes
+
+**Migrations créées**:
+- ✅ **Migration 36** (`20251027000036_save_calculation_results.sql`)
+  - Tentative restauration INSERT
+  - ❌ Échoue à cause du cast UUID
+
+- ✅ **Migration 37** (`20251027000037_fix_subcategory_type_cast.sql`)
+  - `ALTER COLUMN subcategory_id TYPE TEXT`
+  - Corrige incompatibilité de type
+
+- ✅ **Migration 38** (`20251027000038_restore_insert_with_text_subcategory.sql`)
+  - INSERT fonctionnel avec TEXT subcategory_id
+  - Transport dynamique + sauvegarde en base
+  - ⚠️ **Statut**: "internal server error" rapporté (à investiguer)
+
+#### 4. Documentation Créée
+- 📄 **MIGRATION_INTERDEPENDENCIES.md**
+  - Matrice complète de dépendances migrations 33-38
+  - Diagnostics des problèmes rencontrés
+  - Plan de rollback si nécessaire
+  - Checklist de vérification post-déploiement
+
+#### Statut Final
+- 🟢 **Filtrage réponses**: Déployé et fonctionnel
+- 🟢 **Transport dynamique**: Intégré dans fonction
+- 🟢 **Type subcategory_id**: Corrigé (UUID → TEXT)
+- 🔴 **INSERT en base**: À vérifier (internal server error)
+
+#### Fichiers Modifiés
+- `app/api/validate-item/route.ts`
+- `supabase/migrations/20251027000033_fix_pesa_and_tar_logic.sql` (nouveau)
+- `supabase/migrations/20251027000034_fix_currency_lookup_critical.sql` (nouveau)
+- `supabase/migrations/20251027000035_integrate_transport_calculator.sql` (nouveau)
+- `supabase/migrations/20251027000036_save_calculation_results.sql` (nouveau)
+- `supabase/migrations/20251027000037_fix_subcategory_type_cast.sql` (nouveau)
+- `supabase/migrations/20251027000038_restore_insert_with_text_subcategory.sql` (nouveau)
+- `MIGRATION_INTERDEPENDENCIES.md` (nouveau)
+
+#### Actions Requises pour Prochaine Session
+1. ⚠️ **Investiguer "internal server error"** en production
+2. ✅ Vérifier que `calculate_transport_cost_with_optimization()` existe
+3. ✅ Tester INSERT avec vraie clé API WeWeb
+4. ✅ Confirmer données dans `offer_item_calculated_costs`
+
+#### Notes Importantes
+- **WeWeb envoie**: `supplier_cost` → mappé à `purchase_price_ht`
+- **WeWeb envoie**: `name` → mappé à `product_name`
+- **WeWeb envoie**: `weight_kg` → mappé à `package_weight_kg`
+- **WeWeb envoie**: `contains_battery` → mappé à `has_battery`
+- **Coûts logistique**: Maintenant dynamiques selon dimensions/poids
+- **Format réponse fournisseur**: Masque tous coûts internes

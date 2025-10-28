@@ -67,6 +67,15 @@ interface ValidateItemRequest {
   // NEW: Identifiers
   variant_id?: string
   user_id?: string
+
+  // WEWEB COMPATIBILITY: Alternative field names
+  name?: string                  // Alternative to product_name
+  supplier_cost?: number         // Alternative to purchase_price_ht
+  weight_kg?: number             // Alternative to package_weight_kg
+  contains_battery?: boolean     // Alternative to has_battery (WeWeb uses plural)
+  contain_battery?: boolean      // Alternative to has_battery (WeWeb typo)
+  tar_fee?: number               // Alternative to tar_ht
+  reserved_stock?: number        // Alternative to quantity
 }
 
 interface ApiKeyVerificationResult {
@@ -219,15 +228,23 @@ export async function POST(request: Request) {
     const body: ValidateItemRequest = await request.json()
 
     // Required fields (item_id can be null, will be auto-generated)
+    // WEWEB COMPATIBILITY: Accept both purchase_price_ht and supplier_cost
     const requiredFields = [
       'offer_id',
       'msrp',
       'street_price',
-      'promo_price',
-      'purchase_price_ht'
+      'promo_price'
     ]
 
     const missingFields = requiredFields.filter(field => !(field in body) || (body as any)[field] === undefined)
+
+    // WEWEB COMPATIBILITY: Check for purchase_price_ht OR supplier_cost
+    const hasPurchasePrice = ('purchase_price_ht' in body && body.purchase_price_ht !== undefined) ||
+                             ('supplier_cost' in body && body.supplier_cost !== undefined)
+
+    if (!hasPurchasePrice) {
+      missingFields.push('purchase_price_ht (or supplier_cost)')
+    }
 
     if (missingFields.length > 0) {
       return NextResponse.json(
@@ -244,11 +261,13 @@ export async function POST(request: Request) {
     }
 
     // Validate numeric fields
+    // WEWEB COMPATIBILITY: Check purchase_price_ht OR supplier_cost
+    const purchasePrice = body.purchase_price_ht || body.supplier_cost || 0
     if (
       typeof body.msrp !== 'number' || body.msrp <= 0 ||
       typeof body.street_price !== 'number' || body.street_price <= 0 ||
       typeof body.promo_price !== 'number' || body.promo_price <= 0 ||
-      typeof body.purchase_price_ht !== 'number' || body.purchase_price_ht <= 0
+      typeof purchasePrice !== 'number' || purchasePrice <= 0
     ) {
       return NextResponse.json(
         {
@@ -264,12 +283,14 @@ export async function POST(request: Request) {
     }
 
     // Validate battery fields if has_battery = true
-    if (body.has_battery === true) {
+    // WEWEB COMPATIBILITY: Check has_battery OR contains_battery OR contain_battery
+    const hasBattery = body.has_battery === true || body.contains_battery === true || body.contain_battery === true
+    if (hasBattery) {
       if (!body.battery_type || body.battery_type.trim() === '') {
         return NextResponse.json(
           {
             success: false,
-            error: 'battery_type is required when has_battery = true',
+            error: 'battery_type is required when has_battery/contains_battery = true',
             code: 'MISSING_BATTERY_TYPE'
           },
           {
@@ -279,11 +300,13 @@ export async function POST(request: Request) {
         )
       }
 
-      if (!body.package_weight_kg || typeof body.package_weight_kg !== 'number' || body.package_weight_kg <= 0) {
+      // WEWEB COMPATIBILITY: Check package_weight_kg OR weight_kg
+      const packageWeight = body.package_weight_kg || body.weight_kg
+      if (!packageWeight || typeof packageWeight !== 'number' || packageWeight <= 0) {
         return NextResponse.json(
           {
             success: false,
-            error: 'package_weight_kg (weight_kg) is required and must be > 0 when has_battery = true',
+            error: 'package_weight_kg (or weight_kg) is required and must be > 0 when has_battery = true',
             code: 'MISSING_WEIGHT'
           },
           {
@@ -298,6 +321,10 @@ export async function POST(request: Request) {
     // STEP 3: BUILD ITEM DATA JSONB
     // ============================================================================
 
+    // Helper: Determine if product is electronic based on subcategory
+    const electronicSubcategories = ['s20', 's21', 's22', 's23', 's24', 's25', 's26', 's27', 's42', 's63']
+    const isElectronic = body.subcategory_id && electronicSubcategories.includes(body.subcategory_id)
+
     const itemData = {
       offer_id: body.offer_id,
       item_id: body.item_id || null,  // Can be null
@@ -305,11 +332,15 @@ export async function POST(request: Request) {
       msrp: body.msrp,
       street_price: body.street_price,
       promo_price: body.promo_price,
-      purchase_price_ht: body.purchase_price_ht,
+
+      // WEWEB COMPATIBILITY: Accept both field names
+      purchase_price_ht: body.purchase_price_ht || body.supplier_cost,
       purchase_currency: body.purchase_currency || 'CHF',
       ean: body.ean || null,
-      product_name: body.product_name || null,
-      package_weight_kg: body.package_weight_kg || null,
+      product_name: body.product_name || body.name || null,
+
+      // WEWEB COMPATIBILITY: Accept both 'package_weight_kg' and 'weight_kg'
+      package_weight_kg: body.package_weight_kg || body.weight_kg || null,
 
       // Dimensions
       length_cm: body.length_cm || null,
@@ -325,14 +356,18 @@ export async function POST(request: Request) {
       // Shipping and customs
       shipping_origin: body.shipping_origin || 'CH',
 
-      // Electronic/TAR
-      contain_electronic: body.contain_electronic || false,
-      has_battery: body.has_battery || false,
+      // Electronic/TAR - WEWEB COMPATIBILITY
+      // WeWeb uses 'contains_battery' (plural), we accept both
+      // If subcategory is electronic, auto-detect contain_electronic
+      contain_electronic: body.contain_electronic || isElectronic,
+      has_battery: body.has_battery || body.contains_battery || body.contain_battery || false,
       battery_type: body.battery_type || null,
-      tar_ht: body.tar_ht || 0,  // Will be calculated by TAR API
+
+      // WEWEB COMPATIBILITY: Accept both 'tar_ht' and 'tar_fee'
+      tar_ht: body.tar_ht || body.tar_fee || 0,  // Will be calculated by TAR API
 
       // Other
-      quantity: body.quantity || 1,
+      quantity: body.quantity || body.reserved_stock || 1,
       warranty_cost_ht: body.warranty_cost_ht || 0
     }
 
@@ -373,9 +408,9 @@ export async function POST(request: Request) {
 
         if (tarResponse.ok) {
           const tarData = await tarResponse.json()
-          if (tarData.success && tarData.tar_ht) {
-            tarAmount = parseFloat(tarData.tar_ht)
-            console.log(`✅ TAR calculated: CHF ${tarAmount} (${tarData.organisme || 'N/A'})`)
+          if (tarData.success && tarData.tar && tarData.tar.tarifHT) {
+            tarAmount = parseFloat(tarData.tar.tarifHT)
+            console.log(`✅ TAR calculated: CHF ${tarAmount} (${tarData.tar.organisme || 'N/A'})`)
           } else {
             console.warn('⚠️ TAR API returned no tariff, using 0')
           }
@@ -420,8 +455,10 @@ export async function POST(request: Request) {
     }
 
     // ============================================================================
-    // STEP 6: RETURN RESULT
+    // STEP 6: FILTER RESPONSE FOR SUPPLIER
     // ============================================================================
+    // IMPORTANT: Suppliers should NOT see internal costs (PESA, TAR, logistics, margins)
+    // Only return: status, item details, public pricing, and comments
 
     // If validation function returned success=false, return 400
     if (data && !data.success) {
@@ -434,8 +471,73 @@ export async function POST(request: Request) {
       )
     }
 
+    // Build supplier-friendly response (hide internal costs and margins)
+    // Filter comments to remove sensitive internal cost details
+    const supplierComments: string[] = []
+
+    if (data.validation_issues && data.validation_issues.length > 0) {
+      data.validation_issues.forEach((issue: string) => {
+        // Filter out comments that reveal internal costs (PESA, margins, etc.)
+        if (issue.includes('PESA fees applied') || issue.includes('CHF')) {
+          // Generic message about international import
+          if (!supplierComments.includes('Produit soumis aux frais d\'importation internationale')) {
+            supplierComments.push('Produit soumis aux frais d\'importation internationale')
+          }
+        } else if (issue.includes('Margin') && issue.includes('%')) {
+          // Don't reveal margin issues to supplier
+          // Optionally add a generic message
+        } else {
+          // Keep other non-sensitive comments
+          supplierComments.push(issue)
+        }
+      })
+    }
+
+    // Add deal status explanation
+    if (data.deal_status === 'top') {
+      supplierComments.push('✅ Offre acceptée - Excellent rapport qualité/prix')
+    } else if (data.deal_status === 'good') {
+      supplierComments.push('✅ Offre acceptée - Bon rapport qualité/prix')
+    } else if (data.deal_status === 'almost') {
+      supplierComments.push('⚠️ Offre à revoir - Prix légèrement élevé')
+    } else if (data.deal_status === 'bad') {
+      supplierComments.push('❌ Offre refusée - Prix trop élevé')
+    }
+
+    const supplierResponse = {
+      success: data.success,
+      is_valid: data.is_valid,
+      deal_status: data.deal_status,
+      cost_id: data.cost_id || null,
+      generated_item_id: data.generated_item_id,
+
+      // Item details (safe to share)
+      item_details: data.item_details,
+
+      // Public pricing only (safe to share)
+      pricing: {
+        msrp: data.pricing?.msrp,
+        street_price: data.pricing?.street_price,
+        promo_price: data.pricing?.promo_price,
+        purchase_price_original: data.pricing?.purchase_price_original,
+        purchase_currency: data.pricing?.purchase_currency,
+        currency_rate: data.pricing?.currency_rate,
+        purchase_price_chf_ht: data.costs?.purchase_price_chf_ht // Only the converted purchase price
+      },
+
+      // Supplier-friendly comments (sensitive info removed)
+      comments: supplierComments
+    }
+
+    // DO NOT INCLUDE (confidential internal data):
+    // - costs.cogs_ht (reveals our total cost structure)
+    // - costs.pesa_fee_* (reveals import fees)
+    // - costs.tar_ht (reveals recycling tax)
+    // - costs.logistics_total_ht (reveals logistics costs)
+    // - margins.* (reveals our profit margins)
+
     return NextResponse.json(
-      data,
+      supplierResponse,
       {
         status: 200,
         headers: corsHeaders(origin)
