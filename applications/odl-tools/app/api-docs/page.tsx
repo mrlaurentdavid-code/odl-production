@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState } from 'react'
 import { Code2, Server, Zap, Database, Link as LinkIcon, Calculator, Image as ImageIcon, Languages, ExternalLink, CheckCircle, ShieldCheck, Truck } from 'lucide-react'
 import { BackToDashboard } from '@/components/ui/BackToDashboard'
