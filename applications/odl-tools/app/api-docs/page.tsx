@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Code2, Server, Zap, Database, Link as LinkIcon, Calculator, Image as ImageIcon, Languages, ExternalLink, CheckCircle, ShieldCheck } from 'lucide-react'
+import { Code2, Server, Zap, Database, Link as LinkIcon, Calculator, Image as ImageIcon, Languages, ExternalLink, CheckCircle, ShieldCheck, Truck } from 'lucide-react'
 import { BackToDashboard } from '@/components/ui/BackToDashboard'
 import Link from 'next/link'
 
-type ApiSection = 'tar' | 'image-converter' | 'translation' | 'validation'
+type ApiSection = 'tar' | 'transport' | 'image-converter' | 'translation' | 'validation'
 
 export default function ApiDocsPage() {
   const [activeApi, setActiveApi] = useState<ApiSection>('tar')
@@ -17,6 +17,15 @@ export default function ApiDocsPage() {
       icon: Calculator,
       color: 'blue',
       description: 'Calcul des taxes de recyclage',
+      version: 'v2.0.0',
+      status: 'active'
+    },
+    {
+      id: 'transport' as ApiSection,
+      name: 'Transport Calculator',
+      icon: Truck,
+      color: 'orange',
+      description: 'Calcul des coûts de transport avec optimisation palettes',
       version: 'v2.0.0',
       status: 'active'
     },
@@ -84,7 +93,7 @@ export default function ApiDocsPage() {
                   }
                 `}
                 style={isActive ? {
-                  backgroundColor: api.color === 'blue' ? '#3b82f6' : api.color === 'indigo' ? '#6366f1' : api.color === 'purple' ? '#a855f7' : '#22c55e'
+                  backgroundColor: api.color === 'blue' ? '#3b82f6' : api.color === 'orange' ? '#f97316' : api.color === 'indigo' ? '#6366f1' : api.color === 'purple' ? '#a855f7' : '#22c55e'
                 } : {}}
               >
                 <div className="flex items-start gap-3">
@@ -92,11 +101,11 @@ export default function ApiDocsPage() {
                     w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
                   `}
                   style={!isActive && !isComingSoon ? {
-                    backgroundColor: api.color === 'blue' ? '#dbeafe' : api.color === 'indigo' ? '#e0e7ff' : api.color === 'purple' ? '#f3e8ff' : '#dcfce7'
+                    backgroundColor: api.color === 'blue' ? '#dbeafe' : api.color === 'orange' ? '#ffedd5' : api.color === 'indigo' ? '#e0e7ff' : api.color === 'purple' ? '#f3e8ff' : '#dcfce7'
                   } : isActive ? { backgroundColor: 'rgba(255,255,255,0.2)' } : { backgroundColor: '#e5e5e5' }}>
                     <Icon className="w-5 h-5"
                       style={!isActive && !isComingSoon ? {
-                        color: api.color === 'blue' ? '#2563eb' : api.color === 'indigo' ? '#4f46e5' : api.color === 'purple' ? '#9333ea' : '#16a34a'
+                        color: api.color === 'blue' ? '#2563eb' : api.color === 'orange' ? '#ea580c' : api.color === 'indigo' ? '#4f46e5' : api.color === 'purple' ? '#9333ea' : '#16a34a'
                       } : isActive ? { color: 'white' } : { color: '#a3a3a3' }} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -135,6 +144,7 @@ export default function ApiDocsPage() {
       <main className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-5xl mx-auto p-8 space-y-8">
           {activeApi === 'tar' && <TarCalculatorDocs />}
+          {activeApi === 'transport' && <TransportCalculatorDocs />}
           {activeApi === 'image-converter' && <ImageConverterDocs />}
           {activeApi === 'translation' && <TranslationDocs />}
           {activeApi === 'validation' && <ValidationApiDocs />}
@@ -647,6 +657,393 @@ serve(async (req) => {
           <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-xs">
             <code>{`curl http://localhost:3004/health`}</code>
           </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ===================================
+// TRANSPORT CALCULATOR API DOCS
+// ===================================
+function TransportCalculatorDocs() {
+  return (
+    <>
+      {/* Header */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg bg-orange-500 flex items-center justify-center">
+              <Truck className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-neutral-900">Transport Calculator API</h2>
+              <p className="text-sm text-neutral-600">v2.0.0 - Calcul des coûts de transport avec optimisation palettes</p>
+            </div>
+          </div>
+          <Link
+            href="/transport-calculator"
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Tester en live
+          </Link>
+        </div>
+      </div>
+
+      {/* Info Section */}
+      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6 mb-6">
+        <div className="flex items-start gap-3">
+          <Zap className="w-6 h-6 text-orange-600 mt-1" />
+          <div>
+            <h3 className="font-semibold text-orange-900 mb-2">Calcul intelligent des coûts de transport</h3>
+            <div className="text-sm text-orange-800 space-y-2">
+              <div>
+                <strong>• Optimisation automatique:</strong> Calcule automatiquement le meilleur arrangement palette
+                <br />
+                <span className="text-orange-700">Support de multiples orientations produit (debout, couché, sur le côté) pour maximiser l'utilisation de l'espace.</span>
+              </div>
+              <div>
+                <strong>• Multi-scénarios:</strong> Compare automatiquement différentes quantités
+                <br />
+                <span className="text-orange-700">Identifie le point optimal où le coût unitaire est minimal (idéal pour les recommandations clients).</span>
+              </div>
+              <div>
+                <strong>• Multiples options:</strong> Retourne toutes les options de livraison disponibles
+                <br />
+                <span className="text-orange-700">DHL, Planzer, modes express/economy, formats colis/palette Euro/palette Industrial.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Base URL */}
+      <div className="bg-white border border-border rounded-xl p-6">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Server className="w-4 h-4 text-neutral-600" />
+            <span className="text-sm font-semibold text-neutral-700">URL de base</span>
+          </div>
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-3 font-mono text-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">Développement</div>
+                <code className="text-blue-600">http://localhost:3001</code>
+              </div>
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">Production</div>
+                <code className="text-green-600">https://app.odl-tools.ch</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Endpoint: calculate-transport */}
+        <div className="mb-6 border-l-4 border-orange-500 pl-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">POST</span>
+            <code className="text-sm font-mono text-neutral-900">/api/calculate-transport</code>
+          </div>
+
+          <p className="text-sm text-neutral-600 mb-4">
+            Calcule les coûts de transport avec optimisation automatique des palettes. Retourne le coût optimal,
+            les options de livraison alternatives, et les scénarios d'optimisation pour différentes quantités.
+          </p>
+
+          {/* Request Body */}
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Body (JSON)</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+              <pre>{`{
+  "length_cm": 15.5,              // OBLIGATOIRE - Longueur du produit
+  "width_cm": 7.5,                // OBLIGATOIRE - Largeur du produit
+  "height_cm": 0.8,               // OBLIGATOIRE - Hauteur du produit
+  "weight_kg": 0.221,             // OBLIGATOIRE - Poids du produit
+  "quantity": 100,                // Optionnel - Défaut: 1
+  "carrier": null,                // Optionnel - "dhl", "planzer" ou null (auto)
+  "mode": null,                   // Optionnel - "express", "economy" ou null (auto)
+  "provider_id": "ohmex",         // Optionnel - ID fournisseur (défaut: ohmex)
+  "pallet_format_id": "euro"      // Optionnel - "euro" ou "industrial" (défaut: euro)
+}`}</pre>
+            </div>
+          </div>
+
+          {/* Response */}
+          <div className="mb-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Réponse</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+              <pre>{`{
+  "success": true,
+  "costs": {
+    "transport": {
+      "base": 285.00,              // Coût HT transporteur
+      "margin": 42.75,             // Marge O!Deal (15%)
+      "tva": 26.55,                // TVA 8.1%
+      "subtotal": 327.75,          // Total TTC transporteur
+      "per_unit": 3.28,            // Coût par unité
+      "carrier": "planzer",        // Transporteur sélectionné
+      "mode": "economy",           // Mode de livraison
+      "format_label": "Palette Euro", // Format conteneur
+      "container_dimensions": {    // Dimensions palette
+        "length_cm": 120,
+        "width_cm": 80,
+        "height_cm": 144
+      }
+    },
+    "total_per_unit": 3.28,        // Coût total par unité
+    "delivery_options": [          // TOUTES les options disponibles
+      {
+        "carrier": "planzer",
+        "mode": "economy",
+        "format_label": "Palette Euro",
+        "base": 285.00,
+        "margin": 42.75,
+        "tva": 26.55,
+        "total": 327.75,
+        "per_unit": 3.28,
+        "is_selected": true        // Option choisie automatiquement
+      },
+      {
+        "carrier": "dhl",
+        "mode": "express",
+        "format_label": "Palette Euro",
+        "base": 420.00,
+        "margin": 63.00,
+        "tva": 39.12,
+        "total": 459.12,
+        "per_unit": 4.59,
+        "is_selected": false
+      }
+      // ... autres options
+    ]
+  },
+  "customer_optimization": {       // Optimisation quantités
+    "success": true,
+    "scenarios": [
+      {
+        "quantity": 1,
+        "container": {
+          "format_label": "Colis Standard",
+          "carrier": "dhl",
+          "mode": "express"
+        },
+        "cost_total": 45.50,
+        "cost_unitaire": 45.50,
+        "is_optimal": false,
+        "savings_vs_single": 0
+      },
+      {
+        "quantity": 100,
+        "container": {
+          "format_label": "Palette Euro",
+          "carrier": "planzer",
+          "mode": "economy",
+          "dimensions": {
+            "length_cm": 120,
+            "width_cm": 80,
+            "height_cm": 144
+          }
+        },
+        "arrangement": {
+          "products_per_layer": 64,  // Produits par couche
+          "max_layers": 8,            // Nombre de couches max
+          "layers_needed": 2,         // Couches nécessaires
+          "orientation_used": 1       // Orientation choisie (1=debout, 2=couché, 3=côté)
+        },
+        "cost_total": 327.75,
+        "cost_unitaire": 3.28,         // ← COÛT OPTIMAL
+        "is_optimal": true,
+        "savings_vs_single": 42.22     // Économie vs achat unitaire (CHF)
+      }
+      // ... autres scénarios (50, 200, 500 unités...)
+    ],
+    "optimal_quantity": 100,
+    "min_cost_unitaire": 3.28
+  },
+  "pallet_info": {                   // Détails arrangement palette
+    "success": true,
+    "pallet_format": {
+      "id": "euro",
+      "name": "Palette Euro (EPAL)",
+      "dimensions": {
+        "length_cm": 120,
+        "width_cm": 80,
+        "height_cm": 144,
+        "max_weight_kg": 1000,
+        "pallet_height_cm": 14.4,
+        "available_height_cm": 129.6
+      }
+    },
+    "calculation": {
+      "products_per_layer": 64,      // Par couche
+      "layers_per_pallet": 8,        // Nombre de couches possibles
+      "products_per_pallet_dimension": 512, // Limité par dimensions
+      "products_per_pallet_weight": 4524,   // Limité par poids
+      "products_per_pallet_final": 512,     // Capacité finale
+      "pallets_needed": 1,           // Palettes nécessaires
+      "total_products_shipped": 512, // Total expédiable
+      "product_loss": 0,             // Produits non expédiés
+      "efficiency_percent": 100.00,  // Efficacité utilisation
+      "orientation_used": 1,         // Orientation choisie
+      "product_base_length": 15.5,   // Dimensions produit utilisées
+      "product_base_width": 7.5,
+      "product_stack_height": 0.8
+    }
+  }
+}`}</pre>
+            </div>
+          </div>
+
+          {/* Validation Notes */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
+            <div className="flex items-start gap-2">
+              <Zap className="w-5 h-5 text-amber-600 mt-0.5" />
+              <div>
+                <h5 className="font-semibold text-amber-900 text-sm mb-1">Champs obligatoires</h5>
+                <ul className="text-sm text-amber-800 space-y-1">
+                  <li>• <code className="bg-amber-100 px-1 rounded">length_cm</code>, <code className="bg-amber-100 px-1 rounded">width_cm</code>, <code className="bg-amber-100 px-1 rounded">height_cm</code> : Dimensions du produit (nombres {'>'} 0)</li>
+                  <li>• <code className="bg-amber-100 px-1 rounded">weight_kg</code> : Poids du produit (nombre {'>'} 0)</li>
+                  <li>• Les autres champs sont optionnels et utilisent des valeurs par défaut intelligentes</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* cURL Example */}
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold text-neutral-900 mb-2">Exemple cURL</h4>
+            <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+              <pre>{`curl -X POST https://app.odl-tools.ch/api/calculate-transport \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "length_cm": 15.5,
+    "width_cm": 7.5,
+    "height_cm": 0.8,
+    "weight_kg": 0.221,
+    "quantity": 100
+  }'`}</pre>
+            </div>
+          </div>
+        </div>
+
+        {/* WeWeb Integration Section */}
+        <div className="mt-8 border-t pt-6">
+          <h3 className="text-2xl font-bold text-neutral-900 mb-4 flex items-center gap-2">
+            <Code2 className="w-6 h-6 text-orange-600" />
+            Intégration WeWeb
+          </h3>
+
+          {/* Step 1: API Request */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-neutral-900 mb-3">1. Configuration de l'API Request</h4>
+            <div className="space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="font-semibold text-blue-900 mb-2">Créer une nouvelle API Request</div>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <div>• <strong>Nom:</strong> <code className="bg-blue-100 px-1 rounded">Calculate Transport Cost</code></div>
+                  <div>• <strong>Méthode:</strong> POST</div>
+                  <div>• <strong>URL:</strong> <code className="bg-blue-100 px-1 rounded">https://app.odl-tools.ch/api/calculate-transport</code></div>
+                  <div>• <strong>Headers:</strong></div>
+                  <div className="ml-4 bg-blue-100 rounded p-2 font-mono text-xs">
+                    Content-Type: application/json
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="font-semibold text-purple-900 mb-2">Body de la requête (depuis votre formulaire)</div>
+                <div className="bg-neutral-900 text-neutral-100 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+                  <pre>{`{
+  "length_cm": item.length_cm,
+  "width_cm": item.width_cm,
+  "height_cm": item.height_cm,
+  "weight_kg": item.weight_kg,
+  "quantity": item.quantity || 1
+}`}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 2: Display Results */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-neutral-900 mb-3">2. Afficher les Résultats</h4>
+            <div className="space-y-3">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="font-semibold text-green-900 mb-2">Variables à extraire de la réponse</div>
+                <div className="bg-neutral-900 text-neutral-100 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+                  <pre>{`// Coût optimal sélectionné automatiquement
+transportCostPerUnit = response.data.costs.total_per_unit
+
+// Transporteur et mode choisis
+carrier = response.data.costs.transport.carrier
+mode = response.data.costs.transport.mode
+format = response.data.costs.transport.format_label
+
+// Pour optimisation client (recommandations)
+optimalQuantity = response.data.customer_optimization.optimal_quantity
+minCostPerUnit = response.data.customer_optimization.min_cost_unitaire
+savingsVsSingle = response.data.customer_optimization.scenarios
+  .find(s => s.is_optimal).savings_vs_single
+
+// Toutes les options de livraison
+deliveryOptions = response.data.costs.delivery_options`}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3: Advanced - Display Options */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-neutral-900 mb-3">3. Afficher les Options de Livraison (Avancé)</h4>
+            <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+              <div className="font-semibold text-indigo-900 mb-2">Créer un Repeater pour les options</div>
+              <div className="text-sm text-indigo-800 space-y-2">
+                <div>• <strong>Collection:</strong> <code className="bg-indigo-100 px-1 rounded">response.data.costs.delivery_options</code></div>
+                <div>• <strong>Afficher pour chaque option:</strong></div>
+                <div className="ml-4 space-y-1">
+                  <div>- <code className="bg-indigo-100 px-1 rounded">item.carrier</code> + <code className="bg-indigo-100 px-1 rounded">item.mode</code> (ex: "DHL Express")</div>
+                  <div>- <code className="bg-indigo-100 px-1 rounded">item.format_label</code> (ex: "Palette Euro")</div>
+                  <div>- <code className="bg-indigo-100 px-1 rounded">item.total</code> CHF TTC</div>
+                  <div>- <code className="bg-indigo-100 px-1 rounded">item.per_unit</code> CHF par unité</div>
+                  <div>- Badge "Recommandé" si <code className="bg-indigo-100 px-1 rounded">item.is_selected === true</code></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 4: Optimization Scenarios */}
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-neutral-900 mb-3">4. Afficher les Scénarios d'Optimisation</h4>
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <div className="font-semibold text-teal-900 mb-2">Recommandations de quantité optimale</div>
+              <div className="text-sm text-teal-800 space-y-2">
+                <div>• <strong>Collection:</strong> <code className="bg-teal-100 px-1 rounded">response.data.customer_optimization.scenarios</code></div>
+                <div>• <strong>Message au client:</strong></div>
+                <div className="ml-4 bg-teal-100 rounded p-2 font-mono text-xs">
+                  {`"En commandant {optimal_quantity} unités au lieu de 1,
+vous économisez {savings_vs_single} CHF
+(coût unitaire: {min_cost_unitaire} CHF au lieu de {cost_single} CHF)"`}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Best Practices */}
+        <div className="mt-6 bg-neutral-50 border border-neutral-200 rounded-lg p-4">
+          <h4 className="font-semibold text-neutral-900 mb-2 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-neutral-600" />
+            Bonnes Pratiques
+          </h4>
+          <ul className="text-sm text-neutral-700 space-y-1">
+            <li>• Toujours vérifier <code className="bg-neutral-200 px-1 rounded">response.data.success === true</code> avant d'utiliser les données</li>
+            <li>• Utiliser <code className="bg-neutral-200 px-1 rounded">delivery_options</code> pour donner le choix au client entre plusieurs transporteurs</li>
+            <li>• Afficher <code className="bg-neutral-200 px-1 rounded">customer_optimization</code> pour encourager les commandes groupées</li>
+            <li>• Le champ <code className="bg-neutral-200 px-1 rounded">is_selected: true</code> indique l'option recommandée (meilleur rapport qualité/prix)</li>
+            <li>• Les dimensions sont en <strong>centimètres</strong>, le poids en <strong>kilogrammes</strong></li>
+          </ul>
         </div>
       </div>
     </>
