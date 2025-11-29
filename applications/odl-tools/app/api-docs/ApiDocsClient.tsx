@@ -175,7 +175,7 @@ function TarCalculatorDocs() {
             </div>
           </div>
           <a
-            href="https://tar.odl-tools.ch"
+            href="https://tar-api.odl-tools.ch"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -223,7 +223,7 @@ function TarCalculatorDocs() {
               </div>
               <div>
                 <div className="text-neutral-600 text-xs mb-1">Production</div>
-                <code className="text-green-600">https://tar.odl-tools.ch</code>
+                <code className="text-green-600">https://tar-api.odl-tools.ch</code>
               </div>
             </div>
           </div>
@@ -309,7 +309,7 @@ function TarCalculatorDocs() {
           <div className="mt-4">
             <h4 className="text-sm font-semibold text-neutral-900 mb-2">Exemple cURL</h4>
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
-              <pre>{`curl -X POST https://tar.odl-tools.ch/api/calculate-tar-v2 \\
+              <pre>{`curl -X POST https://tar-api.odl-tools.ch/api/calculate-tar-v2 \\
   -H "Content-Type: application/json" \\
   -d '{
     "ean": "5099206071131",
@@ -341,7 +341,7 @@ function TarCalculatorDocs() {
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
               <pre>{`{
   "item_name": "iPhone 15 Pro",           // OBLIGATOIRE - Nom du produit
-  "subcategory_id": "s20",                 // OBLIGATOIRE - ID subcategory (s1-s65)
+  "subcategory_id": "P3-SP20",            // OBLIGATOIRE - ID subcategory (P1-SP1 à P10-SP67)
   "has_battery": true,                     // Optionnel - Produit contient batterie
   "battery_type": "lithium_ion_rechargeable", // Si has_battery = true
   "ean": "194252721444",                   // Optionnel
@@ -364,7 +364,7 @@ function TarCalculatorDocs() {
   "confidence": 95,
   "product": {
     "nom_produit": "iPhone 15 Pro",
-    "subcategory_id": "s20",
+    "subcategory_id": "P3-SP20",
     "ean": "194252721444",
     "sku": "SKU-123",
     "poids_kg": 0.221,
@@ -387,7 +387,7 @@ function TarCalculatorDocs() {
     "tva": 8.1,
     "calculation_method": "subcategory_mapping",
     "notes": [
-      "Catégorie identifiée depuis subcategory s20",
+      "Catégorie identifiée depuis subcategory P3-SP20",
       "Tarif SWICO standard appliqué: CHF 0.19"
     ]
   },
@@ -403,13 +403,19 @@ function TarCalculatorDocs() {
             <div className="flex items-start gap-2">
               <Database className="w-5 h-5 text-purple-600 mt-0.5" />
               <div>
-                <h5 className="font-semibold text-purple-900 text-sm mb-1">Subcategories supportées</h5>
+                <h5 className="font-semibold text-purple-900 text-sm mb-1">Subcategories supportées (format: P{'{'}cat{'}'}-SP{'{'}num{'}'})</h5>
                 <div className="text-sm text-purple-800 space-y-1">
-                  <p>• <strong>s20</strong> : Téléphonie (SWICO) - CHF 0.19</p>
-                  <p>• <strong>s21</strong> : Informatique (SWICO) - Variable selon taille écran</p>
-                  <p>• <strong>s24-s25</strong> : Électroménager (SENS) - Variable selon poids</p>
-                  <p>• <strong>s1-s19</strong> : Mode, Maison (AUCUN TAR)</p>
-                  <p className="mt-2 text-xs">📋 <strong>65 subcategories</strong> mappées → Voir fichier subcategory-tar-mapping.js</p>
+                  <p><strong>P1 - Mode (P1-SP1 à P1-SP11)</strong> : AUCUN TAR (sauf P1-SP9 montre connectée → SWICO 0.19)</p>
+                  <p><strong>P2 - Maison & Jardin (P2-SP12 à P2-SP19)</strong> : AUCUN TAR (sauf P2-SP17 outils électriques → SENS)</p>
+                  <p><strong>P3 - Électronique (P3-SP20 à P3-SP25)</strong> : SWICO - P3-SP20 Téléphonie 0.19, P3-SP21 Informatique variable, P3-SP25 Consoles 2.31</p>
+                  <p><strong>P4 - Sport & Loisirs (P4-SP28 à P4-SP36)</strong> : AUCUN TAR (sauf P4-SP33 vélo électrique → SENS)</p>
+                  <p><strong>P5 - Beauté & Santé (P5-SP37 à P5-SP45)</strong> : AUCUN TAR (sauf P5-SP42 appareils de soin → SWICO 0.46)</p>
+                  <p><strong>P6 - Cuisine & Électroménager (P6-SP46 à P6-SP51)</strong> : P6-SP46/47 AUCUN, P6-SP48 à P6-SP51 SENS selon poids</p>
+                  <p><strong>P7 - Culture (P7-SP52 à P7-SP55)</strong> : AUCUN TAR</p>
+                  <p><strong>P8 - Jouets & Enfants (P8-SP56 à P8-SP59)</strong> : AUCUN TAR (sauf si batterie → SWICO 0.46)</p>
+                  <p><strong>P9 - Auto & Moto (P9-SP60 à P9-SP62)</strong> : AUCUN TAR (sauf GPS/dashcam → SWICO 2.31)</p>
+                  <p><strong>P10 - Bricolage & Outils (P10-SP63 à P10-SP67)</strong> : P10-SP64 Outillage électroportatif → SENS, P10-SP67 Éclairage → SENS 0.18</p>
+                  <p className="mt-2 text-xs">📋 <strong>67 subcategories</strong> mappées vers 10 catégories Odeal (format: P{'{'}cat{'}'}-SP{'{'}num{'}'})</p>
                 </div>
               </div>
             </div>
@@ -441,11 +447,11 @@ function TarCalculatorDocs() {
             <div className="mb-3">
               <p className="text-xs text-neutral-600 mb-1 font-semibold">Exemple 1 : Smartphone</p>
               <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
-                <pre>{`curl -X POST https://tar.odl-tools.ch/api/calculate-tar-odeal \\
+                <pre>{`curl -X POST https://tar-api.odl-tools.ch/api/calculate-tar-odeal \\
   -H "Content-Type: application/json" \\
   -d '{
     "item_name": "iPhone 15 Pro",
-    "subcategory_id": "s20",
+    "subcategory_id": "P3-SP20",
     "has_battery": true,
     "weight_kg": 0.187
   }'`}</pre>
@@ -456,11 +462,11 @@ function TarCalculatorDocs() {
             <div className="mb-3">
               <p className="text-xs text-neutral-600 mb-1 font-semibold">Exemple 2 : Ordinateur portable</p>
               <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
-                <pre>{`curl -X POST https://tar.odl-tools.ch/api/calculate-tar-odeal \\
+                <pre>{`curl -X POST https://tar-api.odl-tools.ch/api/calculate-tar-odeal \\
   -H "Content-Type: application/json" \\
   -d '{
     "item_name": "MacBook Pro 16",
-    "subcategory_id": "s21",
+    "subcategory_id": "P3-SP21",
     "weight_kg": 2.1,
     "length_cm": 35.57,
     "width_cm": 24.81
@@ -470,14 +476,28 @@ function TarCalculatorDocs() {
 
             {/* Appliance Example */}
             <div className="mb-3">
-              <p className="text-xs text-neutral-600 mb-1 font-semibold">Exemple 3 : Électroménager</p>
+              <p className="text-xs text-neutral-600 mb-1 font-semibold">Exemple 3 : Gros électroménager</p>
               <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
-                <pre>{`curl -X POST https://tar.odl-tools.ch/api/calculate-tar-odeal \\
+                <pre>{`curl -X POST https://tar-api.odl-tools.ch/api/calculate-tar-odeal \\
   -H "Content-Type: application/json" \\
   -d '{
     "item_name": "Lave-linge Bosch",
-    "subcategory_id": "s24",
+    "subcategory_id": "P6-SP49",
     "weight_kg": 68
+  }'`}</pre>
+              </div>
+            </div>
+
+            {/* Small Appliance Example */}
+            <div className="mb-3">
+              <p className="text-xs text-neutral-600 mb-1 font-semibold">Exemple 4 : Petit électroménager</p>
+              <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
+                <pre>{`curl -X POST https://tar-api.odl-tools.ch/api/calculate-tar-odeal \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "item_name": "Bouilloire Philips",
+    "subcategory_id": "P6-SP48",
+    "weight_kg": 1.2
   }'`}</pre>
               </div>
             </div>
@@ -495,7 +515,7 @@ function TarCalculatorDocs() {
               </div>
               <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
                 <pre>{`// Configuration du REST API Data Source dans Weweb
-Base URL: https://tar.odl-tools.ch
+Base URL: https://tar-api.odl-tools.ch
 Endpoint: /api/calculate-tar-odeal
 Method: POST
 Headers:
@@ -527,7 +547,7 @@ Headers:
               <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
                 <pre>{`// Node: HTTP Request
 Method: POST
-URL: https://tar.odl-tools.ch/api/calculate-tar-odeal
+URL: https://tar-api.odl-tools.ch/api/calculate-tar-odeal
 
 // Body (JSON)
 {
@@ -562,7 +582,7 @@ URL: https://tar.odl-tools.ch/api/calculate-tar-odeal
             </div>
             <div className="bg-neutral-900 text-neutral-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
               <pre>{`// Configuration du REST API Data Source dans Weweb
-Base URL: http://localhost:3004 (ou https://tar.odl-tools.ch en prod)
+Base URL: http://localhost:3004 (ou https://tar-api.odl-tools.ch en prod)
 Endpoint: /api/calculate-tar-v2
 Method: POST
 Headers:

@@ -8,7 +8,7 @@ echo "🚀 Deploying ODL Tools to Server..."
 
 SERVER="root@31.97.193.159"
 SSH_KEY="$HOME/.ssh/claude_temp_key"
-LOCAL_PATH="/Users/laurentdavid/Desktop/odl-projects/odl-tools"
+LOCAL_PATH="/Users/laurentdavid/Desktop/App ODL-Tools/odl-production/applications/odl-tools"
 REMOTE_PATH="/opt/odl-tools"
 
 # Colors
